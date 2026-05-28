@@ -1,68 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../auth/[...nextauth]/route";
-import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 
-export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session || (session.user as any).role !== "TEACHER") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function POST(req: Request) {
   try {
-    const subjects = await prisma.subject.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        modules: {
-          include: {
-            _count: {
-              select: { topics: true }
-            }
-          }
-        },
-      }
-    });
-    return NextResponse.json(subjects);
-  } catch (error) {
-    console.error("Error fetching subjects:", error);
-    return NextResponse.json({ error: "Failed to fetch subjects" }, { status: 500 });
-  }
-}
+    const session = await getServerSession(authOptions);
 
-export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session || (session.user as any).role !== "TEACHER") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    if (!session || (session.user as any).role !== "faculty") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
 
-  try {
-    const body = await req.json();
-    const { code, title, description, instructor, credits, semester, coverColor } = body;
+    const { name, description } = await req.json();
 
-    if (!code || !title || !description || !instructor || credits === undefined || semester === undefined) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: "Subject name is required" }, { status: 400 });
     }
 
     const subject = await prisma.subject.create({
       data: {
-        code,
-        title,
+        name,
         description,
-        instructor,
-        credits: parseInt(credits),
-        semester: parseInt(semester),
-        coverColor: coverColor || "from-red-500 to-red-700",
-      }
+      },
     });
 
-    return NextResponse.json(subject);
-  } catch (error: any) {
+    return NextResponse.json({ subject }, { status: 201 });
+  } catch (error) {
     console.error("Error creating subject:", error);
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: "Subject code must be unique" }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Failed to create subject" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

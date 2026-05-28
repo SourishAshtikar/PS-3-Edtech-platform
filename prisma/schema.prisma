@@ -1,16 +1,10 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-}
-
-enum Role {
-  STUDENT
-  TEACHER
-  ADMIN
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -19,14 +13,19 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  role          Role      @default(STUDENT)
-  
+  role          String    @default("student") // "student" or "faculty"
+  xp            Int       @default(0)
+  streak        Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts       Account[]
-  topicProgress  TopicProgress[]
-  moduleProgress ModuleProgress[]
+  accounts           Account[]
+  sessions           Session[]
+  progress           StudentProgress[]
+  userBadges         UserBadge[]
+  quizAttempts       QuizAttempt[]
+  simulationProgress SimulationProgress[]
+  subjectEnrollments SubjectEnrollment[]
 }
 
 model Account {
@@ -38,7 +37,6 @@ model Account {
   refresh_token      String?  @db.Text
   access_token       String?  @db.Text
   expires_at         Int?
-  refresh_token_expires_in Int?
   token_type         String?
   scope              String?
   id_token           String?  @db.Text
@@ -49,114 +47,221 @@ model Account {
   @@unique([provider, providerAccountId])
 }
 
-model Subject {
+model Session {
   id           String   @id @default(cuid())
-  code         String   @unique
-  title        String
-  description  String
-  instructor   String
-  credits      Int
-  semester     Int
-  coverColor   String
-  totalModules Int      @default(0)
-  totalTopics  Int      @default(0)
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  modules      Module[]
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  @@unique([identifier, token])
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  modules     Module[]
+  enrollments SubjectEnrollment[]
+}
+
+model SubjectEnrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  subjectId String
+  xp        Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subjectId])
 }
 
 model Module {
   id          String   @id @default(cuid())
   subjectId   String
-  order       Int
+  moduleNo    Int
   title       String
+  hours       Int
+  co          String
   description String
-  isLocked    Boolean  @default(false)
 
-  subject         Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topics          Topic[]
-  studentProgress ModuleProgress[]
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  subject            Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subtopics          Subtopic[]
+  simulations        Simulation[]
+  quizzes            Quiz[]
+  studentProgress    StudentProgress[]
 }
 
-model Topic {
+model Subtopic {
   id              String   @id @default(cuid())
   moduleId        String
-  order           Int
+  subtopicNo      String
   title           String
-  type            String   // "notes", "quiz", "simulation", "mindmap", "flashcard", "extra"
-  durationMinutes Int      @default(15)
-
-  // Optional string fields
-  videoId               String?  
-  ebookContent          String?  
+  description     String
+  videoUrl              String?
+  notesUrl              String?
+  notesDownloadUrl      String?
+  quizFileUrl           String?
+  quizFileDownloadUrl   String?
+  mindMapUrl            String?
+  mindMapDownloadUrl    String?
+  flashCardsUrl         String?
+  flashCardsDownloadUrl String?
+  referenceUrl          String?
+  referenceDownloadUrl  String?
+  otherUrl              String?
+  otherDownloadUrl      String?
   simulationUrl         String?
-  assignmentDescription String?
+  learningOutcome       String?
 
-  module          Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  quizQuestions   QuizQuestion[]
-  fileMaterials   FileMaterial[]
-  studentProgress TopicProgress[]
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  simulations     Simulation[]
+  quizzes         Quiz[]
 }
 
-model FileMaterial {
-  id                 String  @id @default(cuid())
-  topicId            String
-  googleDriveFileId  String
-  webContentLink     String?
-  mimeType           String?
-  fileName           String
+model Simulation {
+  id              String   @id @default(cuid())
+  moduleId        String
+  subtopicId      String?
+  title           String
+  description     String
+  difficulty      String
+  xpReward        Int
+  estimatedTime   String?
+  learningOutcome String?
+  frontendUrl     String?
 
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
+  module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  subtopic        Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
+  progress        SimulationProgress[]
 }
 
-model QuizQuestion {
+model SimulationProgress {
   id           String   @id @default(cuid())
-  topicId      String
-  question     String
-  options      String[] 
-  correctIndex Int
-  explanation  String
+  userId       String
+  simulationId String
+  completed    Boolean  @default(false)
+  xpEarned     Int      @default(0)
+  createdAt    DateTime @default(now())
 
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  simulation   Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
 }
 
-model TopicProgress {
+model Quiz {
   id          String   @id @default(cuid())
-  userId      String
-  topicId     String
-  isCompleted Boolean  @default(true)
-  quizScore   Int?      
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, topicId])
-}
-
-model ModuleProgress {
-  id          String   @id @default(cuid())
-  userId      String
   moduleId    String
-  isCompleted Boolean  @default(true)
+  subtopicId  String?
+  title       String
+  difficulty  String
+  timeLimit   Int // in minutes
+  xpReward    Int
+  documentUrl String?
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  subtopic    Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
+  questions   Question[]
+  attempts    QuizAttempt[]
+}
 
+model Question {
+  id            String   @id @default(cuid())
+  quizId        String
+  questionText  String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String // "A", "B", "C", "D"
+  marks         Int      @default(1)
+  explanation   String?
+  difficulty    String?
+
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id         String   @id @default(cuid())
+  userId     String
+  quizId     String
+  score      Int      @default(0)
+  totalMarks Int
+  xpEarned   Int      @default(0)
+  completed  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz       Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers    QuizAnswer[]
+}
+
+model QuizAnswer {
+  id             String   @id @default(cuid())
+  attemptId      String
+  questionId     String
+  selectedOption String // "A", "B", "C", "D"
+  isCorrect      Boolean
+
+  attempt        QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+}
+
+model Flashcard {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  condition   String // "Complete Module 1", "Earn 1000 XP"
+
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id         String   @id @default(cuid())
+  userId     String
+  badgeId    String
+  dateEarned DateTime @default(now())
+
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge      Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+}
+
+model StudentProgress {
+  id                 String   @id @default(cuid())
+  userId             String
+  moduleId           String
+  completedSubtopics String[] // Array of completed subtopic IDs
+  completed          Boolean  @default(false)
+  updatedAt          DateTime @updatedAt
+
+  user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module             Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, moduleId])
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  title     String
+  type      String   // "paper" or "book"
+  link      String   // Google Drive Link
+  detail    String?  // Year/Semester or Edition/Author details
+  createdAt DateTime @default(now())
 }

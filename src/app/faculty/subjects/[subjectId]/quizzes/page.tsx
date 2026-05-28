@@ -1,0 +1,553 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Target, Plus, Trash2, HelpCircle, FileUp, Sparkles } from "lucide-react";
+import { useParams } from "next/navigation";
+
+interface QuestionForm {
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  marks: string;
+  explanation: string;
+  difficulty: string;
+}
+
+export default function ManageQuizzesPage() {
+  const params = useParams();
+  const subjectId = params.subjectId as string;
+
+  const [modules, setModules] = useState<any[]>([]);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
+
+  // Form states
+  const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [selectedSubtopicId, setSelectedSubtopicId] = useState("");
+  const [title, setTitle] = useState("");
+  const [difficulty, setDifficulty] = useState("Easy");
+  const [timeLimit, setTimeLimit] = useState("");
+  const [xpReward, setXpReward] = useState("100");
+  const [questions, setQuestions] = useState<QuestionForm[]>([
+    {
+      questionText: "",
+      optionA: "",
+      optionB: "",
+      optionC: "",
+      optionD: "",
+      correctAnswer: "A",
+      marks: "1",
+      explanation: "",
+      difficulty: "Easy"
+    }
+  ]);
+
+  // AI Document upload state
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [uploadedDocName, setUploadedDocName] = useState("");
+  const [docUploadMsg, setDocUploadMsg] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    fetchModules();
+    fetchQuizzes();
+  }, []);
+
+  const fetchModules = async () => {
+    try {
+      const res = await fetch(`/api/faculty/modules?subjectId=${subjectId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setModules(data);
+      }
+    } catch (err) {
+      console.error("Error fetching modules:", err);
+    }
+  };
+
+  const fetchQuizzes = async () => {
+    try {
+      const res = await fetch(`/api/faculty/quizzes?subjectId=${subjectId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setQuizzes(data);
+      }
+    } catch (err) {
+      console.error("Error fetching quizzes:", err);
+    }
+  };
+
+  const getSubtopicsForSelectedModule = () => {
+    const mod = modules.find(m => m.id === selectedModuleId);
+    return mod ? mod.subtopics || [] : [];
+  };
+
+  const handleAddQuestionField = () => {
+    setQuestions([
+      ...questions,
+      {
+        questionText: "",
+        optionA: "",
+        optionB: "",
+        optionC: "",
+        optionD: "",
+        correctAnswer: "A",
+        marks: "1",
+        explanation: "",
+        difficulty: "Easy"
+      }
+    ]);
+  };
+
+  const handleRemoveQuestionField = (index: number) => {
+    if (questions.length > 1) {
+      setQuestions(questions.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleQuestionChange = (index: number, field: keyof QuestionForm, value: string) => {
+    const updated = [...questions];
+    updated[index][field] = value;
+    setQuestions(updated);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+
+    if (!selectedModuleId || !title || !timeLimit || !xpReward) {
+      setMessage({ type: "error", text: "Please fill in all required fields." });
+      setLoading(false);
+      return;
+    }
+
+    const validQuestions = questions.filter(q => q.questionText.trim() !== "");
+    if (validQuestions.length === 0) {
+      setMessage({ type: "error", text: "At least one question is required." });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/faculty/quizzes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          moduleId: selectedModuleId,
+          subtopicId: selectedSubtopicId || null,
+          title,
+          difficulty,
+          timeLimit,
+          xpReward,
+          questions: validQuestions
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMessage({ type: "success", text: "Quiz created successfully!" });
+        // Reset form
+        setTitle("");
+        setTimeLimit("");
+        setXpReward("100");
+        setQuestions([
+          {
+            questionText: "",
+            optionA: "",
+            optionB: "",
+            optionC: "",
+            optionD: "",
+            correctAnswer: "A",
+            marks: "1",
+            explanation: "",
+            difficulty: "Easy"
+          }
+        ]);
+        setSelectedSubtopicId("");
+        fetchQuizzes();
+      } else {
+        setMessage({ type: "error", text: data.error || "Failed to create quiz" });
+      }
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message || "An unexpected error occurred" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock document upload for future quiz generation
+  const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDoc(true);
+    setDocUploadMsg("");
+    setUploadedDocName(file.name);
+
+    setTimeout(() => {
+      setUploadingDoc(false);
+      setDocUploadMsg(`File "${file.name}" uploaded successfully! (Quiz will be generated in upcoming versions.)`);
+    }, 2000);
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-zinc-900 flex items-center">
+          <Target className="w-8 h-8 mr-3 text-primary" />
+          Manage Course Quizzes
+        </h1>
+        <p className="text-zinc-500 mt-1">Create conceptual quizzes manually or upload document materials for AI generation.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Creator Form */}
+        <div className="lg:col-span-2 space-y-8">
+          <Card className="border-zinc-200 shadow-md">
+            <CardHeader className="bg-zinc-50 border-b border-zinc-100">
+              <CardTitle className="text-xl text-zinc-900">Manual Quiz Builder</CardTitle>
+              <CardDescription>Enter details and write individual quiz questions.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {message && (
+                  <div className={`p-4 rounded-lg text-sm font-semibold ${message.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-primary border border-red-200"}`}>
+                    {message.text}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-zinc-700 mb-1">Target Module *</label>
+                    <select
+                      required
+                      value={selectedModuleId}
+                      onChange={(e) => {
+                        setSelectedModuleId(e.target.value);
+                        setSelectedSubtopicId("");
+                      }}
+                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:outline-none focus:border-primary"
+                    >
+                      <option value="">Select a Module</option>
+                      {modules.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          M{m.moduleNo} - {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-zinc-700 mb-1">Target Subtopic (Optional)</label>
+                    <select
+                      disabled={!selectedModuleId}
+                      value={selectedSubtopicId}
+                      onChange={(e) => setSelectedSubtopicId(e.target.value)}
+                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 disabled:bg-zinc-100 disabled:text-zinc-400 focus:outline-none focus:border-primary"
+                    >
+                      <option value="">Map to entire module</option>
+                      {getSubtopicsForSelectedModule().map((st: any) => (
+                        <option key={st.id} value={st.id}>
+                          {st.subtopicNo} - {st.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-bold text-zinc-700 mb-1">Quiz Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Usability Principles Assessment"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-zinc-900 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-zinc-700 mb-1">Difficulty *</label>
+                    <select
+                      value={difficulty}
+                      onChange={(e) => setDifficulty(e.target.value)}
+                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:outline-none focus:border-primary"
+                    >
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-zinc-700 mb-1">Time Limit (mins) *</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="e.g. 15"
+                      value={timeLimit}
+                      onChange={(e) => setTimeLimit(e.target.value)}
+                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-zinc-900 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-zinc-700 mb-1">XP Reward *</label>
+                    <input
+                      type="number"
+                      required
+                      value={xpReward}
+                      onChange={(e) => setXpReward(e.target.value)}
+                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-zinc-900 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-zinc-200 pt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-zinc-900">Questions</h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddQuestionField}
+                      className="border-primary text-primary hover:bg-primary/5 flex items-center space-x-1"
+                    >
+                      <Plus className="w-4 h-4" /> <span>Add Question</span>
+                    </Button>
+                  </div>
+
+                  <div className="space-y-6">
+                    {questions.map((q, index) => (
+                      <div key={index} className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl relative space-y-4">
+                        {questions.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveQuestionField(index)}
+                            className="absolute top-4 right-4 text-zinc-400 hover:text-primary transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
+                        <div className="flex items-center space-x-2">
+                          <HelpCircle className="w-4 h-4 text-primary" />
+                          <h4 className="font-bold text-zinc-800 text-sm">Question #{index + 1}</h4>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-zinc-700 mb-1">Question Text *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Which of the following describes Fitts' Law?"
+                            value={q.questionText}
+                            onChange={(e) => handleQuestionChange(index, "questionText", e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-700 mb-1">Option A *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Option A"
+                              value={q.optionA}
+                              onChange={(e) => handleQuestionChange(index, "optionA", e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-700 mb-1">Option B *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Option B"
+                              value={q.optionB}
+                              onChange={(e) => handleQuestionChange(index, "optionB", e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-700 mb-1">Option C *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Option C"
+                              value={q.optionC}
+                              onChange={(e) => handleQuestionChange(index, "optionC", e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-700 mb-1">Option D *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Option D"
+                              value={q.optionD}
+                              onChange={(e) => handleQuestionChange(index, "optionD", e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-700 mb-1">Correct Answer *</label>
+                            <select
+                              value={q.correctAnswer}
+                              onChange={(e) => handleQuestionChange(index, "correctAnswer", e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                            >
+                              <option value="A">A</option>
+                              <option value="B">B</option>
+                              <option value="C">C</option>
+                              <option value="D">D</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-700 mb-1">Marks</label>
+                            <input
+                              type="number"
+                              value={q.marks}
+                              onChange={(e) => handleQuestionChange(index, "marks", e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-700 mb-1">Difficulty</label>
+                            <select
+                              value={q.difficulty}
+                              onChange={(e) => handleQuestionChange(index, "difficulty", e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                            >
+                              <option value="Easy">Easy</option>
+                              <option value="Medium">Medium</option>
+                              <option value="Hard">Hard</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-zinc-700 mb-1">Explanation (Optional)</label>
+                          <textarea
+                            rows={2}
+                            placeholder="Provide correct answer explanation..."
+                            value={q.explanation}
+                            onChange={(e) => handleQuestionChange(index, "explanation", e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-900 text-sm focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-primary hover:bg-primary/95 text-white font-bold h-11 shadow-md transition-colors"
+                >
+                  {loading ? "Creating Quiz..." : "Create Quiz"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* AI Generator Document Upload UI */}
+          <Card className="border-zinc-200 shadow-md">
+            <CardHeader className="bg-zinc-50 border-b border-zinc-100">
+              <CardTitle className="text-xl text-zinc-900 flex items-center">
+                <Sparkles className="w-5 h-5 text-amber-500 mr-2 animate-bounce" /> Document-Based Quiz Generator
+              </CardTitle>
+              <CardDescription>
+                Upload reference material (PDF/Word) to automatically compile quiz questions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="border-2 border-dashed border-zinc-300 rounded-xl p-8 flex flex-col items-center justify-center bg-zinc-50 hover:bg-zinc-100/50 transition-colors relative cursor-pointer group">
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  onChange={handleDocUpload}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  disabled={uploadingDoc}
+                />
+                <FileUp className="w-12 h-12 text-zinc-400 group-hover:text-primary transition-colors mb-3" />
+                <span className="font-semibold text-zinc-700 text-sm">
+                  {uploadingDoc ? "Uploading File..." : "Click or Drag File here to Upload"}
+                </span>
+                <span className="text-xs text-zinc-400 mt-1">Supports PDF, Word, or TXT (Max 10MB)</span>
+              </div>
+
+              {docUploadMsg && (
+                <div className="mt-4 p-3 bg-blue-50 text-blue-800 rounded-lg text-xs font-semibold border border-blue-100">
+                  {docUploadMsg}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Existing Quizzes List */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold text-zinc-900">Current Quizzes</h3>
+          <div className="space-y-3">
+            {quizzes.length > 0 ? (
+              quizzes.map((q) => (
+                <Card key={q.id} className="border-zinc-200 shadow-sm">
+                  <CardHeader className="p-4 bg-zinc-50 border-b border-zinc-100 flex flex-col space-y-1">
+                    <div className="flex justify-between items-start">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        q.difficulty === "Easy" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                        q.difficulty === "Medium" ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                        "bg-purple-50 text-purple-700 border border-purple-100"
+                      }`}>
+                        {q.difficulty}
+                      </span>
+                      <span className="text-xs font-bold text-amber-600">+{q.xpReward} XP</span>
+                    </div>
+                    <CardTitle className="text-sm font-bold text-zinc-900 mt-1">{q.title}</CardTitle>
+                    <p className="text-[10px] text-zinc-500">Module: {q.module?.title}</p>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-2 text-xs text-zinc-600">
+                    <div className="flex justify-between items-center text-zinc-500 font-medium">
+                      <span>Questions: {q.questions?.length || 0}</span>
+                      <span>Time Limit: {q.timeLimit} mins</span>
+                    </div>
+                    {q.questions && q.questions.length > 0 && (
+                      <div className="pt-2 border-t border-zinc-100 space-y-2">
+                        {q.questions.slice(0, 3).map((quest: any, i: number) => (
+                          <p key={quest.id} className="truncate text-[10px] text-zinc-500">
+                            Q{i + 1}: {quest.questionText}
+                          </p>
+                        ))}
+                        {q.questions.length > 3 && (
+                          <p className="text-[9px] text-zinc-400 italic text-right">
+                            + {q.questions.length - 3} more questions
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <p className="text-xs text-zinc-500 italic text-center py-6">No quizzes created yet.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,87 +1,76 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getOrCreateUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const user = await getOrCreateUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email || "" }
-    });
+    const { subtopicId, moduleId, completed } = await req.json();
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!subtopicId || !moduleId) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const { topicId, moduleId } = await req.json();
-    if (!topicId) {
-      return NextResponse.json({ error: "Missing topicId" }, { status: 400 });
-    }
-
-    // Mark topic as completed
-    await prisma.topicProgress.upsert({
+    // Upsert student progress
+    const progress = await prisma.studentProgress.upsert({
       where: {
-        userId_topicId: {
+        userId_moduleId: {
           userId: user.id,
-          topicId: topicId
+          moduleId: moduleId,
         }
       },
       update: {
-        isCompleted: true
+        completedSubtopics: completed 
+          ? { push: subtopicId } 
+          : undefined, 
       },
       create: {
         userId: user.id,
-        topicId: topicId,
-        isCompleted: true
+        moduleId: moduleId,
+        completedSubtopics: completed ? [subtopicId] : [],
       }
     });
 
-    if (moduleId) {
-      // Check if all topics in module are complete
-      const moduleData = await prisma.module.findUnique({
-        where: { id: moduleId },
-        include: { topics: true }
+    // If we're un-completing, Prisma's `push` doesn't support removal easily, so we fetch and set
+    if (!completed) {
+      const existing = await prisma.studentProgress.findUnique({
+        where: { userId_moduleId: { userId: user.id, moduleId } }
       });
-
-      if (moduleData) {
-        const allTopicIds = moduleData.topics.map((t) => t.id);
-        const completedTopics = await prisma.topicProgress.findMany({
-          where: {
-            userId: user.id,
-            topicId: { in: allTopicIds },
-            isCompleted: true
+      if (existing) {
+        await prisma.studentProgress.update({
+          where: { id: existing.id },
+          data: {
+            completedSubtopics: {
+              set: existing.completedSubtopics.filter((id) => id !== subtopicId)
+            }
           }
         });
-
-        if (completedTopics.length === allTopicIds.length) {
-          await prisma.moduleProgress.upsert({
-            where: {
-              userId_moduleId: {
-                userId: user.id,
-                moduleId: moduleId
-              }
-            },
-            update: {
-              isCompleted: true
-            },
-            create: {
-              userId: user.id,
-              moduleId: moduleId,
-              isCompleted: true
+      }
+    } else {
+       // If completing, we need to ensure we don't have duplicates
+       const existing = await prisma.studentProgress.findUnique({
+        where: { userId_moduleId: { userId: user.id, moduleId } }
+      });
+      if (existing) {
+        const uniqueSubtopics = Array.from(new Set(existing.completedSubtopics));
+        await prisma.studentProgress.update({
+          where: { id: existing.id },
+          data: {
+            completedSubtopics: {
+              set: uniqueSubtopics
             }
-          });
-        }
+          }
+        });
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("Progress save error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error updating progress:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
