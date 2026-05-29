@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Gamepad2, Plus, Info, Globe, Clock, CheckCircle } from "lucide-react";
+import { Gamepad2, Plus, Info, Globe, Clock, CheckCircle, Edit, Trash } from "lucide-react";
 import { useParams } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -24,6 +24,7 @@ export default function ManageSimulationsPage() {
   const [xpReward, setXpReward] = useState("100");
   const [learningOutcome, setLearningOutcome] = useState("");
   const [frontendUrl, setFrontendUrl] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
 
@@ -61,6 +62,48 @@ export default function ManageSimulationsPage() {
     return mod ? mod.subtopics || [] : [];
   };
 
+  const handleEdit = (sim: any) => {
+    setEditingId(sim.id);
+    setSelectedModuleId(sim.moduleId);
+    setSelectedSubtopicId(sim.subtopicId || "");
+    setTitle(sim.title);
+    setDescription(sim.description);
+    setDifficulty(sim.difficulty);
+    setEstimatedTime(sim.estimatedTime || "");
+    setXpReward(sim.xpReward ? sim.xpReward.toString() : "100");
+    setLearningOutcome(sim.learningOutcome || "");
+    setFrontendUrl(sim.frontendUrl || "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this simulation?")) return;
+    try {
+      const res = await fetch(`/api/faculty/simulations?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Simulation deleted successfully");
+        fetchSimulations();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete simulation");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete simulation");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setTitle("");
+    setDescription("");
+    setEstimatedTime("");
+    setXpReward("100");
+    setLearningOutcome("");
+    setFrontendUrl("");
+    setSelectedModuleId("");
+    setSelectedSubtopicId("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -73,9 +116,10 @@ export default function ManageSimulationsPage() {
 
     try {
       const res = await fetch("/api/faculty/simulations", {
-        method: "POST",
+        method: editingId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: editingId,
           subjectId,
           moduleId: selectedModuleId,
           subtopicId: selectedSubtopicId || null,
@@ -91,15 +135,8 @@ export default function ManageSimulationsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success("Simulation created successfully!");
-        // Reset form
-        setTitle("");
-        setDescription("");
-        setEstimatedTime("");
-        setXpReward("100");
-        setLearningOutcome("");
-        setFrontendUrl("");
-        setSelectedSubtopicId("");
+        toast.success(editingId ? "Simulation updated successfully!" : "Simulation created successfully!");
+        cancelEdit();
         fetchSimulations();
       } else {
         toast.error(data.error || "Failed to create simulation");
@@ -126,16 +163,11 @@ export default function ManageSimulationsPage() {
         <div className="lg:col-span-2">
           <Card className="border-zinc-200 shadow-md">
             <CardHeader className="bg-zinc-50 border-b border-zinc-100">
-              <CardTitle className="text-xl text-zinc-900">Add New Simulation</CardTitle>
+              <CardTitle className="text-xl text-zinc-900">{editingId ? "Edit Simulation" : "Add New Simulation"}</CardTitle>
               <CardDescription>Enter details and link the deployed simulation frontend HTML page.</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
-                {message && (
-                  <div className={`p-4 rounded-lg text-sm font-semibold ${message.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-primary border border-red-200"}`}>
-                    {message.text}
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -264,13 +296,26 @@ export default function ManageSimulationsPage() {
                   </span>
                 </div>
 
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-primary hover:bg-primary/95 text-white font-bold h-11 shadow-md transition-colors"
-                >
-                  {loading ? "Adding Simulation..." : "Add Simulation"}
-                </Button>
+                <div className="flex space-x-3">
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-primary hover:bg-primary/95 text-white font-bold h-11 shadow-md transition-colors"
+                  >
+                    {loading ? (editingId ? "Updating..." : "Adding...") : (editingId ? "Update Simulation" : "Add Simulation")}
+                  </Button>
+                  {editingId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={cancelEdit}
+                      disabled={loading}
+                      className="flex-1 h-11 shadow-sm border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+                    >
+                      Cancel Edit
+                    </Button>
+                  )}
+                </div>
               </form>
             </CardContent>
           </Card>
@@ -292,7 +337,15 @@ export default function ManageSimulationsPage() {
                       }`}>
                         {sim.difficulty}
                       </span>
-                      <span className="text-xs font-bold text-amber-600">+{sim.xpReward} XP</span>
+                      <div className="flex items-center space-x-3">
+                        <span className="text-xs font-bold text-amber-600">+{sim.xpReward} XP</span>
+                        <button type="button" onClick={() => handleEdit(sim)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Edit">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button type="button" onClick={() => handleDelete(sim.id)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete">
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                     <CardTitle className="text-sm font-bold text-zinc-900 mt-1">{sim.title}</CardTitle>
                     <p className="text-[10px] text-zinc-500">Module: {sim.module?.title}</p>

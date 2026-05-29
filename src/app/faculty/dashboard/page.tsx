@@ -6,6 +6,7 @@ import { Users, BookOpen, Target, Gamepad2, PlusCircle, Activity, HardDrive, Gra
 import { WhitelistFacultyForm } from "@/components/faculty/WhitelistFacultyForm";
 import { CreateSubjectForm } from "@/components/faculty/CreateSubjectForm";
 import { ConnectDriveButton } from "@/components/faculty/ConnectDriveButton";
+import { DeleteSubjectButton } from "@/components/faculty/DeleteSubjectButton";
 import { getOrCreateUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -103,7 +104,8 @@ export default async function FacultyDashboardPage() {
             {subjects.length > 0 ? (
               subjects.map((subject) => (
                 <Link key={subject.id} href={`/faculty/subjects/${subject.id}/modules`}>
-                  <Card className="hover:border-primary/50 hover:shadow-md transition-all cursor-pointer h-full border-zinc-200">
+                  <Card className="hover:border-primary/50 hover:shadow-md transition-all cursor-pointer h-full border-zinc-200 relative">
+                    <DeleteSubjectButton subjectId={subject.id} />
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg text-primary">{subject.name}</CardTitle>
                       <CardDescription className="line-clamp-2 min-h-[40px]">{subject.description || "No description provided."}</CardDescription>
