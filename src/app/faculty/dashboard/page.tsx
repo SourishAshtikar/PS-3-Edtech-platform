@@ -15,14 +15,8 @@ export default async function FacultyDashboardPage() {
   const user = await getOrCreateUser();
   if (!user || user.role !== "faculty") redirect("/sign-in");
 
-  const driveAccount = await prisma.account.findFirst({
-    where: {
-      userId: user.id,
-      provider: "google",
-      scope: { contains: "https://www.googleapis.com/auth/drive.file" }
-    }
-  });
-  const isDriveConnected = !!driveAccount;
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  const isDriveConnected = !!dbUser?.googleRefreshToken;
 
   const subjects = await prisma.subject.findMany({
     include: {

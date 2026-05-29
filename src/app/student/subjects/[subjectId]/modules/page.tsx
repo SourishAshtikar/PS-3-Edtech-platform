@@ -25,25 +25,22 @@ export default async function ModulesPage({ params }: { params: Promise<{ subjec
     orderBy: { moduleNo: 'asc' },
   });
 
-  const quizAttempts = await prisma.quizAttempt.findMany({
-    where: { userId: user.id, quiz: { module: { subjectId } } }
-  });
-
-  const simulationProgress = await prisma.simulationProgress.findMany({
-    where: { userId: user.id, simulation: { module: { subjectId } } }
+  const studentProgress = await prisma.studentProgress.findMany({
+    where: { userId: user.id, module: { subjectId } }
   });
 
   const modulesWithXp = modules.map(mod => {
-    const totalXpAvailable = 
-      mod.quizzes.reduce((acc, q) => acc + q.xpReward, 0) + 
-      mod.simulations.reduce((acc, s) => acc + s.xpReward, 0);
+    const totalXpAvailable = (mod.subtopics.length * 100) + 50;
 
-    const moduleQuizAttempts = quizAttempts.filter(qa => mod.quizzes.some(q => q.id === qa.quizId));
-    const moduleSimProgress = simulationProgress.filter(sp => mod.simulations.some(s => s.id === sp.simulationId));
-
-    const xpEarned = 
-      moduleQuizAttempts.reduce((acc, qa) => acc + qa.xpEarned, 0) +
-      moduleSimProgress.reduce((acc, sp) => acc + sp.xpEarned, 0);
+    const prog = studentProgress.find(p => p.moduleId === mod.id);
+    let xpEarned = 0;
+    
+    if (prog) {
+      xpEarned += prog.completedResources.length * 25;
+      if (prog.completed) {
+        xpEarned += 50;
+      }
+    }
 
     return {
       ...mod,

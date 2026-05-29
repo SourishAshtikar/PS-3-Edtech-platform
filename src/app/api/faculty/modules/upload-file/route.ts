@@ -36,15 +36,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Subtopic not found" }, { status: 404 });
     }
 
-    // 2. Get Google Account tokens
-    const account = await prisma.account.findFirst({
+    // 2. Get Google Account tokens from User model
+    const dbUser = await prisma.user.findUnique({
       where: {
-        userId: user.id,
-        provider: "google",
+        id: user.id,
       },
     });
 
-    if (!account || !account.access_token) {
+    if (!dbUser || !dbUser.googleAccessToken) {
       return NextResponse.json({ error: "Google Drive not connected or tokens missing" }, { status: 403 });
     }
 
@@ -55,8 +54,8 @@ export async function POST(req: Request) {
     );
 
     oauth2Client.setCredentials({
-      access_token: account.access_token,
-      refresh_token: account.refresh_token,
+      access_token: dbUser.googleAccessToken,
+      refresh_token: dbUser.googleRefreshToken,
     });
 
     const drive = google.drive({ version: "v3", auth: oauth2Client });

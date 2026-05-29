@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     if (completed) {
       if (!newCompletedSubtopics.includes(subtopicId)) {
         newCompletedSubtopics.push(subtopicId);
-        xpEarned += 50; // XP for subtopic
+        xpEarned += 0; // Subtopic completion gives 0 XP (points come from resources)
       }
 
       // Check if module is completed

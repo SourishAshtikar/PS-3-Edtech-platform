@@ -35,7 +35,7 @@ export async function POST(req: Request) {
         isMockSimulation = true;
         simulation = {
           id: subtopic.id,
-          xpReward: 100, // Hardcoded default for mock subtopic simulations
+          xpReward: 25, // Mock subtopic simulation gives 25 XP
           module: subtopic.module,
         };
       } else {

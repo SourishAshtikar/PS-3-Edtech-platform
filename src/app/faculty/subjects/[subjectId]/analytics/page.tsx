@@ -35,6 +35,9 @@ export default async function FacultyAnalyticsPage({ params }: { params: Promise
             where: { simulation: { module: { subjectId } } },
             include: { simulation: true }
           },
+          progress: {
+            where: { module: { subjectId } }
+          },
           userBadges: true,
         }
       }
@@ -54,7 +57,14 @@ export default async function FacultyAnalyticsPage({ params }: { params: Promise
   const averageXP = totalStudents > 0 ? Math.round(totalXP / totalStudents) : 0;
   
   const totalQuizzesAttempted = students.reduce((sum, s) => sum + s.quizAttempts.length, 0);
-  const totalSimulationsCompleted = students.reduce((sum, s) => sum + s.simulationProgress.length, 0);
+  
+  const totalSimulationsCompleted = students.reduce((sum, s) => {
+    const realSims = s.simulationProgress.length;
+    const mockSims = s.progress?.reduce((count, sp) => {
+      return count + sp.completedResources.filter((r: string) => r.endsWith("-sandbox_completed")).length;
+    }, 0) || 0;
+    return sum + realSims + mockSims;
+  }, 0);
 
   // 2. Average Quiz Scores
   let allQuizScoresSum = 0;
@@ -76,8 +86,13 @@ export default async function FacultyAnalyticsPage({ params }: { params: Promise
   // 3. Leaderboard
   const allStudentsRanked = students;
 
-  // 4. Inactive Students (XP = 0 or no quiz/sim activity)
-  const inactiveStudents = students.filter(s => s.subjectXp === 0 && s.quizAttempts.length === 0 && s.simulationProgress.length === 0);
+  // 4. Inactive Students (XP = 0 or no activity)
+  const inactiveStudents = students.filter(s => {
+    const mockSims = s.progress?.reduce((count, sp) => {
+      return count + sp.completedResources.filter((r: string) => r.endsWith("-sandbox_completed")).length;
+    }, 0) || 0;
+    return s.subjectXp === 0 && s.quizAttempts.length === 0 && s.simulationProgress.length === 0 && mockSims === 0;
+  });
 
   // 5. Weak Topics Calculator
   const quizScoresMap: Record<string, { totalEarned: number; totalMarks: number; attemptsCount: number }> = {};
@@ -293,7 +308,7 @@ export default async function FacultyAnalyticsPage({ params }: { params: Promise
                         {student.quizAttempts.length}
                       </TableCell>
                       <TableCell className="text-center font-medium text-zinc-700">
-                        {student.simulationProgress.length}
+                        {student.simulationProgress.length + (student.progress?.reduce((count, sp) => count + sp.completedResources.filter((r: string) => r.endsWith("-sandbox_completed")).length, 0) || 0)}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center -space-x-2">

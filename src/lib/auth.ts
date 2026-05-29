@@ -1,10 +1,8 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -16,50 +14,46 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       if (!user.email) return false;
 
-      if (account) {
-        const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
-        if (dbUser) {
-          const updateData: any = {
-            access_token: account.access_token,
-            expires_at: account.expires_at,
-            scope: account.scope,
-          };
-          if (account.refresh_token) {
-            updateData.refresh_token = account.refresh_token;
-          }
-          await prisma.account.updateMany({
-            where: { userId: dbUser.id, provider: account.provider },
-            data: updateData
-          });
-        }
-      }
-
       const adminEmail = process.env.INITIAL_ADMIN_EMAIL || "admin@example.com";
 
-      if (user.email === adminEmail) {
-        let existingUser = await prisma.user.findUnique({
-          where: { email: user.email },
-        });
+      let dbUser = await prisma.user.findUnique({
+        where: { email: user.email },
+      });
 
-        if (existingUser && existingUser.role !== "faculty") {
-          await prisma.user.update({
+      const tokensData: any = {};
+      if (account) {
+        if (account.access_token) tokensData.googleAccessToken = account.access_token;
+        if (account.refresh_token) tokensData.googleRefreshToken = account.refresh_token;
+      }
+
+      if (!dbUser) {
+        dbUser = await prisma.user.create({
+          data: {
+            email: user.email,
+            name: user.name || "Student",
+            image: user.image,
+            role: user.email === adminEmail ? "faculty" : "student",
+            ...tokensData
+          },
+        });
+      } else {
+        const updateData = { ...tokensData };
+        if (user.email === adminEmail && dbUser.role !== "faculty") {
+          updateData.role = "faculty";
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          dbUser = await prisma.user.update({
             where: { email: user.email },
-            data: { role: "faculty" },
-          });
-        } else if (!existingUser) {
-          await prisma.user.create({
-            data: {
-              email: user.email,
-              name: user.name || "Admin",
-              image: user.image,
-              role: "faculty",
-            },
+            data: updateData,
           });
         }
       }
 
-      // Allow all other sign ups/ins to pass through.
-      // PrismaAdapter will create a new user if they don't exist, defaulting to 'student'
+      // Attach DB info to the user object so it flows into the JWT token
+      user.id = dbUser.id;
+      (user as any).role = dbUser.role;
+
       return true;
     },
     async jwt({ token, user }) {
