@@ -72,6 +72,7 @@ model Subject {
 
   modules     Module[]
   enrollments SubjectEnrollment[]
+  resources   Resource[]
 }
 
 model SubjectEnrollment {
@@ -259,9 +260,12 @@ model StudentProgress {
 
 model Resource {
   id        String   @id @default(cuid())
+  subjectId String?
   title     String
   type      String   // "paper" or "book"
   link      String   // Google Drive Link
   detail    String?  // Year/Semester or Edition/Author details
   createdAt DateTime @default(now())
+
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 }

@@ -12,6 +12,7 @@ import {
   ArrowRight, Book
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SubjectResourceCard } from "@/components/cards/SubjectResourceCard";
 
 export default async function StudentDashboard({ params }: { params: Promise<{ subjectId: string }> }) {
   const user = await getOrCreateUser();
@@ -84,9 +85,11 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
   });
   const classRank = allEnrollments.findIndex(e => e.userId === user.id) + 1;
 
-  // 7. Resource Folder Redirect Links (Direct links to Google Drive)
-  const papersLink = "https://drive.google.com/drive/u/0/folders/1WLx7vcx2B8DqW4ikQtDEjzvIi2MNW80L";
-  const booksLink = "https://drive.google.com/drive/u/0/folders/1hF7ggpOPk9sr_Zf5TKfuafJf3tgh1xGa";
+  // 7. Fetch Subject Resources
+  const subjectResources = await prisma.resource.findMany({
+    where: { subjectId },
+    orderBy: { createdAt: 'desc' }
+  });
 
   // 8. Fetch user badges
   const userBadges = await prisma.userBadge.findMany({
@@ -263,6 +266,26 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
             </div>
           </div>
 
+
+          {/* 2.5 Subject Resources */}
+          {subjectResources.length > 0 && (
+            <div className="mb-10">
+              <h3 className="text-2xl font-bold text-zinc-900 flex items-center mb-5">
+                <Book className="w-6 h-6 mr-2.5 text-primary" /> Subject Resources
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {subjectResources.map(resource => (
+                  <div key={resource.id}>
+                    <SubjectResourceCard
+                      title={resource.title}
+                      type={resource.type}
+                      link={resource.link}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 3. Quizzes & Assessments */}
           <div>
