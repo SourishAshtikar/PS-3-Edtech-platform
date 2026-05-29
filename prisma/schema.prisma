@@ -54,6 +54,7 @@ model SubjectEnrollment {
   subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, subjectId])
+  @@index([subjectId])
 }
 
 model Module {
@@ -70,6 +71,8 @@ model Module {
   simulations        Simulation[]
   quizzes            Quiz[]
   studentProgress    StudentProgress[]
+
+  @@index([subjectId])
 }
 
 model Subtopic {
@@ -97,6 +100,8 @@ model Subtopic {
   module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   simulations     Simulation[]
   quizzes         Quiz[]
+
+  @@index([moduleId])
 }
 
 model Simulation {
@@ -114,6 +119,9 @@ model Simulation {
   module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   subtopic        Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
   progress        SimulationProgress[]
+
+  @@index([moduleId])
+  @@index([subtopicId])
 }
 
 model SimulationProgress {
@@ -126,6 +134,9 @@ model SimulationProgress {
 
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   simulation   Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([simulationId])
 }
 
 model Quiz {
@@ -142,6 +153,9 @@ model Quiz {
   subtopic    Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
   questions   Question[]
   attempts    QuizAttempt[]
+
+  @@index([moduleId])
+  @@index([subtopicId])
 }
 
 model Question {
@@ -158,6 +172,8 @@ model Question {
   difficulty    String?
 
   quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
 }
 
 model QuizAttempt {
@@ -173,6 +189,9 @@ model QuizAttempt {
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   quiz       Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
   answers    QuizAnswer[]
+
+  @@index([userId])
+  @@index([quizId])
 }
 
 model QuizAnswer {
@@ -183,6 +202,9 @@ model QuizAnswer {
   isCorrect      Boolean
 
   attempt        QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@index([questionId])
 }
 
 model Flashcard {
@@ -210,6 +232,9 @@ model UserBadge {
 
   user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   badge      Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([badgeId])
 }
 
 model StudentProgress {
@@ -225,6 +250,7 @@ model StudentProgress {
   module             Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, moduleId])
+  @@index([moduleId])
 }
 
 model Resource {
@@ -237,4 +263,6 @@ model Resource {
   createdAt DateTime @default(now())
 
   subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
 }
