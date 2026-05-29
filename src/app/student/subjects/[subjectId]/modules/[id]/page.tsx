@@ -117,148 +117,35 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
                   </div>
                 )}
 
-                {/* Buttons row directly under the video player */}
                 <div className="flex flex-wrap items-center gap-4 border-t border-zinc-100 pt-5 mt-auto">
-                  {/* Notes */}
                   {subtopic.notesUrl && (
-                    <div className="flex gap-2">
-                      <a href={subtopic.notesUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                          <FileText className="w-5 h-5 mr-2 text-primary" /> Preview Notes
-                        </Button>
-                      </a>
-                      {subtopic.notesDownloadUrl && (
-                        <a href={subtopic.notesDownloadUrl} download target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                            <Download className="w-5 h-5 mr-2 text-green-600" /> Download
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Mind Map */}
-                  {subtopic.mindMapUrl && (
-                    <div className="flex gap-2">
-                      <a href={subtopic.mindMapUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                          <BrainCircuit className="w-5 h-5 mr-2 text-primary" /> Mind Map
-                        </Button>
-                      </a>
-                      {subtopic.mindMapDownloadUrl && (
-                        <a href={subtopic.mindMapDownloadUrl} download target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm" aria-label="Download Mind Map">
-                            <Download className="w-5 h-5 text-green-600" />
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Flash Cards */}
-                  {subtopic.flashCardsUrl && (
-                    <div className="flex gap-2">
-                      <a href={subtopic.flashCardsUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                          <CreditCard className="w-5 h-5 mr-2 text-primary" /> Flash Cards
-                        </Button>
-                      </a>
-                      {subtopic.flashCardsDownloadUrl && (
-                        <a href={subtopic.flashCardsDownloadUrl} download target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm" aria-label="Download Flash Cards">
-                            <Download className="w-5 h-5 text-green-600" />
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Reference Content */}
-                  {subtopic.referenceUrl && (
-                    <div className="flex gap-2">
-                      <a href={subtopic.referenceUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                          <Book className="w-5 h-5 mr-2 text-primary" /> Reference
-                        </Button>
-                      </a>
-                      {subtopic.referenceDownloadUrl && (
-                        <a href={subtopic.referenceDownloadUrl} download target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm" aria-label="Download Reference">
-                            <Download className="w-5 h-5 text-green-600" />
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Quiz File */}
-                  {subtopic.quizFileUrl && (
-                    <div className="flex gap-2">
-                      <a href={subtopic.quizFileUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                          <HelpCircle className="w-5 h-5 mr-2 text-primary" /> Quiz File
-                        </Button>
-                      </a>
-                      {subtopic.quizFileDownloadUrl && (
-                        <a href={subtopic.quizFileDownloadUrl} download target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm" aria-label="Download Quiz File">
-                            <Download className="w-5 h-5 text-green-600" />
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Other File */}
-                  {subtopic.otherUrl && (
-                    <div className="flex gap-2">
-                      <a href={subtopic.otherUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                          <LinkIcon className="w-5 h-5 mr-2 text-primary" /> Other Resource
-                        </Button>
-                      </a>
-                      {subtopic.otherDownloadUrl && (
-                        <a href={subtopic.otherDownloadUrl} download target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm" aria-label="Download Other File">
-                            <Download className="w-5 h-5 text-green-600" />
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Simulation Link */}
-                  {subtopic.simulationUrl && (
-                    <a href={subtopic.simulationUrl} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                        <Gamepad2 className="w-5 h-5 mr-2 text-primary" /> External Simulation
+                    <a href={subtopic.notesUrl} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="bg-white hover:bg-red-50 border-red-200 text-red-700 text-sm font-bold h-11 px-6 shadow-sm">
+                        <FileText className="w-5 h-5 mr-2" /> Read Notes
                       </Button>
                     </a>
                   )}
 
-                  {/* Interactive Simulation (DB) */}
-                  {subtopic.simulations && subtopic.simulations.length > 0 && (
-                    <Link href={`/student/subjects/${subjectId}/simulations/${subtopic.simulations[0].id}`}>
-                      <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                        <Gamepad2 className="w-5 h-5 mr-2 text-blue-600" /> Play Simulation
+                  {(subtopic.simulationUrl || (subtopic.simulations && subtopic.simulations.length > 0)) && (
+                    <Link href={
+                      subtopic.simulations && subtopic.simulations.length > 0 
+                        ? `/student/subjects/${subjectId}/simulations/${subtopic.simulations[0].id}`
+                        : `/student/subjects/${subjectId}/modules/${id}/simulations/${subtopic.id}`
+                    }>
+                      <Button variant="outline" className="bg-white hover:bg-blue-50 border-blue-200 text-blue-700 text-sm font-bold h-11 px-6 shadow-sm">
+                        <Gamepad2 className="w-5 h-5 mr-2" /> View Simulation
                       </Button>
                     </Link>
                   )}
 
-                  {/* Interactive Quizzes (DB) */}
-                  {(subtopic.id in module1Quizzes || subtopic.id in module2Quizzes) ? (
+                  {((subtopic.id in module1Quizzes || subtopic.id in module2Quizzes) || (subtopic.quizzes && subtopic.quizzes.length > 0)) && (
                     <Link href={`/student/subjects/${subjectId}/quizzes/${subtopic.id}`}>
-                      <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                        <Target className="w-5 h-5 mr-2 text-primary" /> Attempt Quiz
+                      <Button variant="outline" className="bg-white hover:bg-red-50 border-red-200 text-red-700 text-sm font-bold h-11 px-6 shadow-sm">
+                        <Target className="w-5 h-5 mr-2" /> Attempt Quiz
                       </Button>
                     </Link>
-                  ) : subtopic.quizzes && subtopic.quizzes.length > 0 ? (
-                    <Link href={`/student/subjects/${subjectId}/quizzes/${subtopic.quizzes[0].id}`}>
-                      <Button variant="outline" className="bg-white hover:bg-zinc-50 border-zinc-200 text-sm font-bold h-11 px-6 shadow-sm">
-                        <Target className="w-5 h-5 mr-2 text-primary" /> Attempt Quiz
-                      </Button>
-                    </Link>
-                  ) : null}
+                  )}
+
                   <MarkCompletedButton 
                     subtopicId={subtopic.id} 
                     moduleId={id} 
