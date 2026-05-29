@@ -5,9 +5,7 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: Request) {
   try {
     const user = await getOrCreateUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { subtopicId, moduleId, completed } = await req.json();
 
@@ -15,60 +13,75 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Upsert student progress
-    const progress = await prisma.studentProgress.upsert({
+    const module = await prisma.module.findUnique({
+      where: { id: moduleId },
+      include: { subtopics: true }
+    });
+
+    if (!module) {
+      return NextResponse.json({ error: "Module not found" }, { status: 404 });
+    }
+
+    const existing = await prisma.studentProgress.findUnique({
+      where: { userId_moduleId: { userId: user.id, moduleId } }
+    });
+
+    let xpEarned = 0;
+    let newCompletedSubtopics: string[] = existing ? [...existing.completedSubtopics] : [];
+    let isModuleCompletedNow = false;
+
+    if (completed) {
+      if (!newCompletedSubtopics.includes(subtopicId)) {
+        newCompletedSubtopics.push(subtopicId);
+        xpEarned += 50; // XP for subtopic
+      }
+
+      // Check if module is completed
+      if (newCompletedSubtopics.length === module.subtopics.length && (!existing || !existing.completed)) {
+        isModuleCompletedNow = true;
+        xpEarned += 50; // Extra XP for module
+      }
+    } else {
+      newCompletedSubtopics = newCompletedSubtopics.filter(id => id !== subtopicId);
+    }
+
+    // Save progress
+    await prisma.studentProgress.upsert({
       where: {
-        userId_moduleId: {
-          userId: user.id,
-          moduleId: moduleId,
-        }
+        userId_moduleId: { userId: user.id, moduleId }
       },
       update: {
-        completedSubtopics: completed 
-          ? { push: subtopicId } 
-          : undefined, 
+        completedSubtopics: { set: newCompletedSubtopics },
+        completed: existing?.completed ? true : isModuleCompletedNow
       },
       create: {
         userId: user.id,
-        moduleId: moduleId,
-        completedSubtopics: completed ? [subtopicId] : [],
+        moduleId,
+        completedSubtopics: newCompletedSubtopics,
+        completed: isModuleCompletedNow
       }
     });
 
-    // If we're un-completing, Prisma's `push` doesn't support removal easily, so we fetch and set
-    if (!completed) {
-      const existing = await prisma.studentProgress.findUnique({
-        where: { userId_moduleId: { userId: user.id, moduleId } }
+    // Award XP
+    if (xpEarned > 0) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { xp: { increment: xpEarned } }
       });
-      if (existing) {
-        await prisma.studentProgress.update({
-          where: { id: existing.id },
-          data: {
-            completedSubtopics: {
-              set: existing.completedSubtopics.filter((id) => id !== subtopicId)
-            }
-          }
-        });
-      }
-    } else {
-       // If completing, we need to ensure we don't have duplicates
-       const existing = await prisma.studentProgress.findUnique({
-        where: { userId_moduleId: { userId: user.id, moduleId } }
+
+      // Update SubjectEnrollment XP
+      await prisma.subjectEnrollment.upsert({
+        where: { userId_subjectId: { userId: user.id, subjectId: module.subjectId } },
+        update: { xp: { increment: xpEarned } },
+        create: {
+          userId: user.id,
+          subjectId: module.subjectId,
+          xp: xpEarned
+        }
       });
-      if (existing) {
-        const uniqueSubtopics = Array.from(new Set(existing.completedSubtopics));
-        await prisma.studentProgress.update({
-          where: { id: existing.id },
-          data: {
-            completedSubtopics: {
-              set: uniqueSubtopics
-            }
-          }
-        });
-      }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, xpEarned });
   } catch (error: any) {
     console.error("Error updating progress:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

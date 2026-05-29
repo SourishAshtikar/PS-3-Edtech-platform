@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { FolderOpen, Plus, Trash2 } from "lucide-react";
 import { SubjectResourceCard } from "@/components/cards/SubjectResourceCard";
+import toast from "react-hot-toast";
 
 interface Resource {
   id: string;
@@ -25,7 +26,6 @@ export default function ManageResourcesPage() {
   
   // Form State
   const [title, setTitle] = useState("");
-  const [type, setType] = useState("paper"); // default to paper
   const [link, setLink] = useState("");
 
   const fetchResources = async () => {
@@ -53,23 +53,25 @@ export default function ManageResourcesPage() {
 
     setIsSubmitting(true);
     try {
+      const computedType = (title.toLowerCase().includes("book") || title.toLowerCase().includes("reference")) ? "book" : "paper";
+
       const res = await fetch(`/api/faculty/subjects/${subjectId}/resources`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, type, link }),
+        body: JSON.stringify({ title, type: computedType, link }),
       });
 
+      const data = await res.json();
       if (res.ok) {
+        toast.success("Resource added successfully!");
         setTitle("");
         setLink("");
-        setType("paper");
         fetchResources();
       } else {
-        alert("Failed to add resource.");
+        toast.error(data.error || "Failed to add resource.");
       }
-    } catch (err) {
-      console.error("Error adding resource:", err);
-      alert("An error occurred while adding the resource.");
+    } catch (err: any) {
+      toast.error(err.message || "An error occurred while adding the resource.");
     } finally {
       setIsSubmitting(false);
     }
@@ -111,18 +113,7 @@ export default function ManageResourcesPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-zinc-700 mb-1">Resource Type *</label>
-                  <select
-                    required
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-zinc-900 focus:outline-none focus:border-primary text-sm"
-                  >
-                    <option value="paper">Question Papers</option>
-                    <option value="book">Reference Books</option>
-                  </select>
-                </div>
+
 
                 <div>
                   <label className="block text-sm font-bold text-zinc-700 mb-1">Drive Folder Link *</label>

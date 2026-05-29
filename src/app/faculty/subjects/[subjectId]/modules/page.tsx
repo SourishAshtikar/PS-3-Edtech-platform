@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { BookOpen, Plus, Trash2, CheckCircle2, ChevronDown, ChevronUp, Edit3, UploadCloud } from "lucide-react";
 import { useParams } from "next/navigation";
+import toast from "react-hot-toast";
 
 interface SubtopicForm {
   id?: string;
@@ -163,7 +164,7 @@ export default function ManageModulesPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert("File uploaded successfully to Google Drive!");
+        toast.success("File uploaded successfully to Google Drive!");
         
         const urlField = resourceType === "notes" ? "notesUrl" :
                          resourceType === "quizFile" ? "quizFileUrl" :
@@ -183,10 +184,10 @@ export default function ManageModulesPage() {
         handleSubtopicChange(index, downloadField as any, data.subtopic[downloadField]);
         fetchModules();
       } else {
-        alert(data.error || "Failed to upload file");
+        toast.error(data.error || "Failed to upload file");
       }
     } catch (err: any) {
-      alert(err.message || "An unexpected error occurred");
+      toast.error(err.message || "An unexpected error occurred");
     } finally {
       setUploadingIndex(null);
       if (fileInput) fileInput.value = "";
@@ -196,11 +197,10 @@ export default function ManageModulesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
 
     const validSubtopics = subtopics.filter(st => st.title.trim() !== "");
     if (validSubtopics.length === 0) {
-      setMessage({ type: "error", text: "At least one subtopic with a title is required." });
+      toast.error("At least one subtopic with a title is required.");
       setLoading(false);
       return;
     }
@@ -226,14 +226,14 @@ export default function ManageModulesPage() {
 
       const data = await res.json();
       if (res.ok) {
-        setMessage({ type: "success", text: editingModuleId ? "Module updated successfully!" : "Module created successfully!" });
+        toast.success(editingModuleId ? "Module updated successfully!" : "Module created successfully!");
         handleCancelEdit();
         fetchModules();
       } else {
-        setMessage({ type: "error", text: data.error || "Failed to save module" });
+        toast.error(data.error || "Failed to save module");
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "An unexpected error occurred" });
+      toast.error(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -443,36 +443,55 @@ export default function ManageModulesPage() {
                           )}
 
                           {["notes", "quizFile", "mindMap", "flashCards", "reference", "other"].includes(st.selectedResourceType || "") && (
-                            <div className="mb-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div>
-                                <p className="text-xs font-bold text-blue-900 flex items-center capitalize">
-                                  <UploadCloud className="w-4 h-4 mr-1.5" /> Upload {st.selectedResourceType?.replace(/([A-Z])/g, ' $1').trim()} to Drive
-                                </p>
-                                <p className="text-[10px] text-blue-700 mt-0.5">File will be uploaded and linked automatically.</p>
-                              </div>
-                              {st.id ? (
-                                <div className="flex items-center space-x-2">
-                                  <input 
-                                    type="file" 
-                                    id={`file-${index}-${st.selectedResourceType}`} 
-                                    className="text-[10px] w-full max-w-[180px] file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
-                                  />
-                                  <Button 
-                                    type="button" 
-                                    size="sm"
-                                    variant="secondary"
-                                    className="text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white"
-                                    onClick={() => handleUploadFile(st.id!, index, st.selectedResourceType!)}
-                                    disabled={uploadingIndex === index}
-                                  >
-                                    {uploadingIndex === index ? "Uploading..." : "Upload"}
-                                  </Button>
+                            <div className="mb-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100 space-y-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-xs font-bold text-blue-900 flex items-center capitalize">
+                                    <UploadCloud className="w-4 h-4 mr-1.5" /> Upload {st.selectedResourceType?.replace(/([A-Z])/g, ' $1').trim()} to Drive
+                                  </p>
+                                  <p className="text-[10px] text-blue-700 mt-0.5">File will be uploaded and linked automatically.</p>
                                 </div>
-                              ) : (
-                                <p className="text-[10px] font-semibold text-amber-600 italic">
-                                  Save module first to upload files.
-                                </p>
-                              )}
+                                {st.id ? (
+                                  <div className="flex items-center space-x-2">
+                                    <input 
+                                      type="file" 
+                                      id={`file-${index}-${st.selectedResourceType}`} 
+                                      className="text-[10px] w-full max-w-[180px] file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                                    />
+                                    <Button 
+                                      type="button" 
+                                      size="sm"
+                                      variant="secondary"
+                                      className="text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white"
+                                      onClick={() => handleUploadFile(st.id!, index, st.selectedResourceType!)}
+                                      disabled={uploadingIndex === index}
+                                    >
+                                      {uploadingIndex === index ? "Uploading..." : "Upload"}
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] font-semibold text-amber-600 italic">
+                                    Save module first to upload files.
+                                  </p>
+                                )}
+                              </div>
+                              <div className="relative flex items-center py-2">
+                                <div className="flex-grow border-t border-blue-200"></div>
+                                <span className="flex-shrink-0 mx-4 text-blue-400 text-[10px] font-bold uppercase">OR</span>
+                                <div className="flex-grow border-t border-blue-200"></div>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-blue-900 mb-1">Paste existing Google Drive Link</label>
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="text"
+                                    placeholder="https://drive.google.com/..."
+                                    value={st[`${st.selectedResourceType}Url` as keyof SubtopicForm] as string || ""}
+                                    onChange={(e) => handleSubtopicChange(index, `${st.selectedResourceType}Url` as keyof SubtopicForm, e.target.value)}
+                                    className="w-full px-2 py-1.5 bg-white border border-blue-200 rounded text-blue-900 text-xs focus:outline-none focus:border-blue-400"
+                                  />
+                                </div>
+                              </div>
                             </div>
                           )}
 

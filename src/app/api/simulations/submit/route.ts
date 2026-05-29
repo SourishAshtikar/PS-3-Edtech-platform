@@ -16,74 +16,116 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing simulationId" }, { status: 400 });
     }
 
-    const simulation = await prisma.simulation.findUnique({
+    let simulation: any = await prisma.simulation.findUnique({
       where: { id: simulationId },
       include: { module: true }
     });
 
+    let isMockSimulation = false;
+    let subtopic = null;
+
     if (!simulation) {
-      return NextResponse.json({ error: "Simulation not found" }, { status: 404 });
+      // Check if this is a "mock simulation" created from a subtopic's simulationUrl
+      subtopic = await prisma.subtopic.findUnique({
+        where: { id: simulationId },
+        include: { module: true }
+      });
+      
+      if (subtopic && subtopic.simulationUrl) {
+        isMockSimulation = true;
+        simulation = {
+          id: subtopic.id,
+          xpReward: 100, // Hardcoded default for mock subtopic simulations
+          module: subtopic.module,
+        };
+      } else {
+        return NextResponse.json({ error: "Simulation not found" }, { status: 404 });
+      }
     }
 
-    // Check if already completed to prevent double XP reward
-    const existingCompletion = await prisma.simulationProgress.findFirst({
-      where: {
-        userId: user.id,
-        simulationId,
-        completed: true,
-      },
-    });
-
-    const xpEarned = existingCompletion ? 0 : simulation.xpReward;
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Create attempt
-      const attempt = await tx.simulationProgress.create({
-        data: {
+    if (!isMockSimulation) {
+      // Normal simulation tracking via SimulationProgress
+      const existingCompletion = await prisma.simulationProgress.findFirst({
+        where: {
           userId: user.id,
           simulationId,
           completed: true,
-          xpEarned,
         },
       });
 
-      // Update User XP
-      let updatedUser = user;
-      if (xpEarned > 0) {
-        updatedUser = await tx.user.update({
-          where: { id: user.id },
-          data: {
-            xp: { increment: xpEarned },
-          },
+      const xpEarned = existingCompletion ? 0 : simulation.xpReward;
+
+      const result = await prisma.$transaction(async (tx) => {
+        const attempt = await tx.simulationProgress.create({
+          data: { userId: user.id, simulationId, completed: true, xpEarned },
         });
 
-        const subjectId = simulation.module?.subjectId;
-        if (subjectId) {
-          const enrollment = await tx.subjectEnrollment.findUnique({
-            where: { userId_subjectId: { userId: user.id, subjectId } }
+        let updatedUser = user;
+        if (xpEarned > 0) {
+          updatedUser = await tx.user.update({
+            where: { id: user.id },
+            data: { xp: { increment: xpEarned } },
           });
-          
-          if (enrollment) {
-            await tx.subjectEnrollment.update({
-              where: { id: enrollment.id },
-              data: { xp: { increment: xpEarned } }
-            });
-          } else {
-            await tx.subjectEnrollment.create({
-              data: { userId: user.id, subjectId, xp: xpEarned }
+
+          const subjectId = simulation.module?.subjectId;
+          if (subjectId) {
+            await tx.subjectEnrollment.upsert({
+              where: { userId_subjectId: { userId: user.id, subjectId } },
+              update: { xp: { increment: xpEarned } },
+              create: { userId: user.id, subjectId, xp: xpEarned },
             });
           }
         }
+        return { attempt, xpEarned, updatedUser };
+      });
+
+      return NextResponse.json({ success: true, xpEarned: result.xpEarned, userXp: result.updatedUser.xp });
+    } else {
+      // Handle mock simulation completion via StudentProgress to prevent foreign key errors
+      const existingProgress = await prisma.studentProgress.findUnique({
+        where: { userId_moduleId: { userId: user.id, moduleId: subtopic.moduleId } }
+      });
+
+      const resourceKey = `${subtopic.id}-sandbox_completed`;
+      const completedResources = existingProgress?.completedResources || [];
+
+      if (completedResources.includes(resourceKey)) {
+        return NextResponse.json({ success: true, xpEarned: 0, userXp: user.xp });
       }
 
-      return { attempt, xpEarned, updatedUser };
-    });
+      completedResources.push(resourceKey);
+      const xpEarned = simulation.xpReward;
 
-    return NextResponse.json({
-      success: true,
-      xpEarned: result.xpEarned,
-      userXp: result.updatedUser.xp,
-    });
+      await prisma.studentProgress.upsert({
+        where: { userId_moduleId: { userId: user.id, moduleId: subtopic.moduleId } },
+        update: { completedResources: { set: completedResources } },
+        create: {
+          userId: user.id,
+          moduleId: subtopic.moduleId,
+          completedSubtopics: [],
+          completedResources: [resourceKey],
+          completed: false,
+        }
+      });
+
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { xp: { increment: xpEarned } }
+      });
+
+      const subjectId = subtopic.module?.subjectId;
+      if (subjectId) {
+        await prisma.subjectEnrollment.upsert({
+          where: { userId_subjectId: { userId: user.id, subjectId } },
+          update: { xp: { increment: xpEarned } },
+          create: { userId: user.id, subjectId, xp: xpEarned },
+        });
+      }
+
+      return NextResponse.json({ success: true, xpEarned, userXp: updatedUser.xp });
+    }
+
+
   } catch (error: any) {
     console.error("Simulation submission error:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });

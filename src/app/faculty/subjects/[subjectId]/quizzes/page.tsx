@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Target, Plus, Trash2, HelpCircle, FileUp, Sparkles } from "lucide-react";
 import { useParams } from "next/navigation";
+import toast from "react-hot-toast";
 
 interface QuestionForm {
   questionText: string;
@@ -52,7 +53,6 @@ export default function ManageQuizzesPage() {
   const [docUploadMsg, setDocUploadMsg] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     fetchModules();
@@ -120,17 +120,16 @@ export default function ManageQuizzesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
 
     if (!selectedModuleId || !title || !timeLimit || !xpReward) {
-      setMessage({ type: "error", text: "Please fill in all required fields." });
+      toast.error("Please fill in all required fields.");
       setLoading(false);
       return;
     }
 
     const validQuestions = questions.filter(q => q.questionText.trim() !== "");
     if (validQuestions.length === 0) {
-      setMessage({ type: "error", text: "At least one question is required." });
+      toast.error("At least one question is required.");
       setLoading(false);
       return;
     }
@@ -152,7 +151,7 @@ export default function ManageQuizzesPage() {
 
       const data = await res.json();
       if (res.ok) {
-        setMessage({ type: "success", text: "Quiz created successfully!" });
+        toast.success("Quiz created successfully!");
         // Reset form
         setTitle("");
         setTimeLimit("");
@@ -173,10 +172,10 @@ export default function ManageQuizzesPage() {
         setSelectedSubtopicId("");
         fetchQuizzes();
       } else {
-        setMessage({ type: "error", text: data.error || "Failed to create quiz" });
+        toast.error(data.error || "Failed to create quiz");
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "An unexpected error occurred" });
+      toast.error(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }

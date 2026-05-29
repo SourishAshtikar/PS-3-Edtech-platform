@@ -97,6 +97,21 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
     include: { badge: true }
   });
 
+  // 9. Calculate Overall Progress & Active Module
+  const totalSubjectSubtopics = modules.reduce((sum, mod) => sum + (mod.subtopics?.length || 0), 0);
+  const completedSubjectSubtopics = userProgress.reduce((sum, prog) => sum + (prog.completedSubtopics?.length || 0), 0);
+  const overallProgressPercent = totalSubjectSubtopics > 0 ? Math.round((completedSubjectSubtopics / totalSubjectSubtopics) * 100) : 0;
+  
+  const activeModule = modules.find(m => {
+    const p = userProgress.find(up => up.moduleId === m.id);
+    return !p || !p.completed || p.completedSubtopics.length < m.subtopics.length;
+  }) || modules[modules.length - 1] || modules[0];
+
+  const activeModuleProgress = activeModule ? userProgress.find((p) => p.moduleId === activeModule.id) : null;
+  const activeModuleCompletedSubtopics = activeModuleProgress?.completedSubtopics.length || 0;
+  const activeModuleTotalSubtopics = activeModule?.subtopics?.length || 1;
+  const activeModuleProgressPercent = Math.round((activeModuleCompletedSubtopics / activeModuleTotalSubtopics) * 100);
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Welcome & Top Stats Banner */}
@@ -160,32 +175,26 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
             <CardDescription>Continue where you left off</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {modules.length > 0 ? (
+            {activeModule ? (
               <>
                 <div>
                   <div className="flex justify-between text-sm mb-1.5 font-semibold text-zinc-700">
-                    <span>{modules[0].title}</span>
+                    <span>{activeModule.title}</span>
                     <span className="text-primary">
-                      {Math.round(
-                        ((userProgress.find((p) => p.moduleId === modules[0].id)?.completedSubtopics.length || 0) /
-                          modules[0].subtopics.length) *
-                        100
-                      )}%
+                      {activeModuleProgressPercent}%
                     </span>
                   </div>
                   <Progress
-                    value={
-                      ((userProgress.find((p) => p.moduleId === modules[0].id)?.completedSubtopics.length || 0) /
-                        modules[0].subtopics.length) *
-                      100
-                    }
+                    value={activeModuleProgressPercent}
                     className="h-2 bg-zinc-100"
                   />
                 </div>
                 <div className="text-xs text-zinc-500 font-medium">
-                  Next Subtopic: <span className="font-semibold text-zinc-700">{modules[0].subtopics[0]?.title || "N/A"}</span>
+                  Next Subtopic: <span className="font-semibold text-zinc-700">
+                    {activeModule.subtopics[activeModuleCompletedSubtopics]?.title || "N/A"}
+                  </span>
                 </div>
-                <Link href={`/student/subjects/${subjectId}/modules/${modules[0].id}`}>
+                <Link href={`/student/subjects/${subjectId}/modules/${activeModule.id}`}>
                   <Button className="w-full mt-2 bg-primary hover:bg-primary/95 text-white">
                     Resume Module <ArrowRight className="w-4 h-4 ml-1.5" />
                   </Button>

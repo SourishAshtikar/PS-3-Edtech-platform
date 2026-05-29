@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getOrCreateUser } from "@/lib/auth";
 import { MarkCompletedButton } from "@/components/student/MarkCompletedButton";
+import { ResourceLinkTracker } from "@/components/student/ResourceLinkTracker";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,6 +71,7 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
   });
 
   const completedSubtopics = progress?.completedSubtopics || [];
+  const completedResources = progress?.completedResources || [];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -89,8 +91,20 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
 
       <h2 className="text-2xl font-bold text-zinc-800 mb-6">Subtopics</h2>
       <div className="space-y-4">
-        {module.subtopics.map((subtopic, index) => (
-          <Card key={subtopic.id} className="overflow-hidden hover:border-primary/30 transition-colors bg-white">
+        {module.subtopics.map((subtopic, index) => {
+          const hasNotes = !!subtopic.notesUrl;
+          const hasSim = !!subtopic.simulationUrl || (subtopic.simulations && subtopic.simulations.length > 0);
+          const hasQuiz = ((subtopic.id in module1Quizzes || subtopic.id in module2Quizzes) || (subtopic.quizzes && subtopic.quizzes.length > 0));
+
+          const isNotesCompleted = !hasNotes || completedResources.includes(`${subtopic.id}-notes`);
+          // We check for 'simulation' (from clicking the button) or 'sandbox_completed' (from actually submitting the sandbox)
+          const isSimCompleted = !hasSim || completedResources.includes(`${subtopic.id}-simulation`) || completedResources.includes(`${subtopic.id}-sandbox_completed`);
+          const isQuizCompleted = !hasQuiz || completedResources.includes(`${subtopic.id}-quiz`);
+
+          const canComplete = isNotesCompleted && isSimCompleted && isQuizCompleted;
+
+          return (
+          <Card key={subtopic.id} className="border-zinc-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden bg-white">
             <div className="flex flex-col md:flex-row">
               <div className="bg-zinc-50 w-full md:w-16 flex items-center justify-center border-b md:border-b-0 md:border-r border-zinc-100 py-4 md:py-0 flex-shrink-0">
                 <span className="text-2xl font-bold text-zinc-300">{index + 1}</span>
@@ -119,43 +133,51 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
 
                 <div className="flex flex-wrap items-center gap-4 border-t border-zinc-100 pt-5 mt-auto">
                   {subtopic.notesUrl && (
-                    <a href={subtopic.notesUrl} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" className="bg-white hover:bg-red-50 border-red-200 text-red-700 text-sm font-bold h-11 px-6 shadow-sm">
-                        <FileText className="w-5 h-5 mr-2" /> Read Notes
-                      </Button>
-                    </a>
+                    <ResourceLinkTracker subtopicId={subtopic.id} moduleId={id} resourceType="notes">
+                      <a href={subtopic.notesUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" className="bg-white hover:bg-red-50 border-red-200 text-red-700 text-sm font-bold h-11 px-6 shadow-sm">
+                          <FileText className="w-5 h-5 mr-2" /> Read Notes
+                        </Button>
+                      </a>
+                    </ResourceLinkTracker>
                   )}
 
                   {(subtopic.simulationUrl || (subtopic.simulations && subtopic.simulations.length > 0)) && (
-                    <Link href={
-                      subtopic.simulations && subtopic.simulations.length > 0 
-                        ? `/student/subjects/${subjectId}/simulations/${subtopic.simulations[0].id}`
-                        : `/student/subjects/${subjectId}/modules/${id}/simulations/${subtopic.id}`
-                    }>
-                      <Button variant="outline" className="bg-white hover:bg-blue-50 border-blue-200 text-blue-700 text-sm font-bold h-11 px-6 shadow-sm">
-                        <Gamepad2 className="w-5 h-5 mr-2" /> View Simulation
-                      </Button>
-                    </Link>
+                    <ResourceLinkTracker subtopicId={subtopic.id} moduleId={id} resourceType="simulation">
+                      <Link href={
+                        subtopic.simulations && subtopic.simulations.length > 0 
+                          ? `/student/subjects/${subjectId}/simulations/${subtopic.simulations[0].id}`
+                          : `/student/subjects/${subjectId}/modules/${id}/simulations/${subtopic.id}`
+                      }>
+                        <Button variant="outline" className="bg-white hover:bg-blue-50 border-blue-200 text-blue-700 text-sm font-bold h-11 px-6 shadow-sm">
+                          <Gamepad2 className="w-5 h-5 mr-2" /> View Simulation
+                        </Button>
+                      </Link>
+                    </ResourceLinkTracker>
                   )}
 
                   {((subtopic.id in module1Quizzes || subtopic.id in module2Quizzes) || (subtopic.quizzes && subtopic.quizzes.length > 0)) && (
-                    <Link href={`/student/subjects/${subjectId}/quizzes/${subtopic.id}`}>
-                      <Button variant="outline" className="bg-white hover:bg-red-50 border-red-200 text-red-700 text-sm font-bold h-11 px-6 shadow-sm">
-                        <Target className="w-5 h-5 mr-2" /> Attempt Quiz
-                      </Button>
-                    </Link>
+                    <ResourceLinkTracker subtopicId={subtopic.id} moduleId={id} resourceType="quiz">
+                      <Link href={`/student/subjects/${subjectId}/quizzes/${subtopic.id}`}>
+                        <Button variant="outline" className="bg-white hover:bg-red-50 border-red-200 text-red-700 text-sm font-bold h-11 px-6 shadow-sm">
+                          <Target className="w-5 h-5 mr-2" /> Attempt Quiz
+                        </Button>
+                      </Link>
+                    </ResourceLinkTracker>
                   )}
 
                   <MarkCompletedButton 
                     subtopicId={subtopic.id} 
                     moduleId={id} 
                     isInitiallyCompleted={completedSubtopics.includes(subtopic.id)} 
+                    canComplete={canComplete}
                   />
                 </div>
               </div>
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

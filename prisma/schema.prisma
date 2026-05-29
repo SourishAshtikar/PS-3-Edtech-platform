@@ -249,6 +249,7 @@ model StudentProgress {
   userId             String
   moduleId           String
   completedSubtopics String[] // Array of completed subtopic IDs
+  completedResources String[] @default([]) // Array of unique resource completions, e.g. "subtopicId-notes"
   completed          Boolean  @default(false)
   updatedAt          DateTime @updatedAt
 

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Gamepad2, Plus, Info, Globe, Clock, CheckCircle } from "lucide-react";
 import { useParams } from "next/navigation";
+import toast from "react-hot-toast";
 
 export default function ManageSimulationsPage() {
   const params = useParams();
@@ -25,7 +26,6 @@ export default function ManageSimulationsPage() {
   const [frontendUrl, setFrontendUrl] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     fetchModules();
@@ -64,10 +64,9 @@ export default function ManageSimulationsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
 
     if (!selectedModuleId || !title || !description || !frontendUrl) {
-      setMessage({ type: "error", text: "Please fill in all required fields." });
+      toast.error("Please fill in all required fields.");
       setLoading(false);
       return;
     }
@@ -77,13 +76,14 @@ export default function ManageSimulationsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          subjectId,
           moduleId: selectedModuleId,
           subtopicId: selectedSubtopicId || null,
           title,
           description,
           difficulty,
           estimatedTime,
-          xpReward,
+          xpReward: parseInt(xpReward),
           learningOutcome,
           frontendUrl
         })
@@ -91,7 +91,7 @@ export default function ManageSimulationsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        setMessage({ type: "success", text: "Simulation created successfully!" });
+        toast.success("Simulation created successfully!");
         // Reset form
         setTitle("");
         setDescription("");
@@ -102,10 +102,10 @@ export default function ManageSimulationsPage() {
         setSelectedSubtopicId("");
         fetchSimulations();
       } else {
-        setMessage({ type: "error", text: data.error || "Failed to create simulation" });
+        toast.error(data.error || "Failed to create simulation");
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "An unexpected error occurred" });
+      toast.error(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
