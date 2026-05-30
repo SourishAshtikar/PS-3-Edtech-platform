@@ -71,10 +71,8 @@ export function QuizResult({
 
   // Helper to render option text
   const getOptionText = (q: Question, opt: "A" | "B" | "C" | "D") => {
-    if (opt === "A") return q.optionA;
-    if (opt === "B") return q.optionB;
-    if (opt === "C") return q.optionC;
-    return q.optionD;
+    const index = opt.charCodeAt(0) - 65;
+    return q.options?.[index] || opt;
   };
 
   return (

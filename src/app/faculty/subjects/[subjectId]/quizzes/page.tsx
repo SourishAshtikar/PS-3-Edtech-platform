@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Plus, Trash2, HelpCircle, FileUp, Sparkles } from "lucide-react";
+import { Target, Plus, Trash2, HelpCircle, FileUp, Sparkles, Pencil } from "lucide-react";
 import { useParams } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -25,6 +25,7 @@ export default function ManageQuizzesPage() {
 
   const [modules, setModules] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
 
   // Form states
   const [selectedModuleId, setSelectedModuleId] = useState("");
@@ -117,6 +118,64 @@ export default function ManageQuizzesPage() {
     setQuestions(updated);
   };
 
+  const handleEdit = (quiz: any) => {
+    setEditingQuizId(quiz.id);
+    setSelectedModuleId(quiz.moduleId);
+    setSelectedSubtopicId(quiz.subtopicId || "");
+    setTitle(quiz.title);
+    setDifficulty(quiz.difficulty);
+    setTimeLimit(quiz.timeLimit.toString());
+    setXpReward(quiz.xpReward.toString());
+
+    if (quiz.questions && quiz.questions.length > 0) {
+      setQuestions(quiz.questions.map((q: any) => ({
+        questionText: q.questionText,
+        optionA: q.options?.[0] || "",
+        optionB: q.options?.[1] || "",
+        optionC: q.options?.[2] || "",
+        optionD: q.options?.[3] || "",
+        correctAnswer: q.correctAnswer,
+        marks: q.marks.toString(),
+        explanation: q.explanation || "",
+        difficulty: q.difficulty || "Easy"
+      })));
+    } else {
+      setQuestions([{
+        questionText: "", optionA: "", optionB: "", optionC: "", optionD: "",
+        correctAnswer: "A", marks: "1", explanation: "", difficulty: "Easy"
+      }]);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = async (quizId: string) => {
+    if (!confirm("Are you sure you want to delete this quiz? This action cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/faculty/quizzes/${quizId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Quiz deleted successfully");
+        fetchQuizzes();
+        if (editingQuizId === quizId) handleCancelEdit();
+      } else {
+        toast.error("Failed to delete quiz");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An unexpected error occurred");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingQuizId(null);
+    setTitle("");
+    setTimeLimit("");
+    setXpReward("100");
+    setSelectedSubtopicId("");
+    setQuestions([{
+      questionText: "", optionA: "", optionB: "", optionC: "", optionD: "",
+      correctAnswer: "A", marks: "1", explanation: "", difficulty: "Easy"
+    }]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -135,8 +194,11 @@ export default function ManageQuizzesPage() {
     }
 
     try {
-      const res = await fetch("/api/faculty/quizzes", {
-        method: "POST",
+      const url = editingQuizId ? `/api/faculty/quizzes/${editingQuizId}` : "/api/faculty/quizzes";
+      const method = editingQuizId ? "PUT" : "POST";
+      
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           moduleId: selectedModuleId,
@@ -151,28 +213,11 @@ export default function ManageQuizzesPage() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success("Quiz created successfully!");
-        // Reset form
-        setTitle("");
-        setTimeLimit("");
-        setXpReward("100");
-        setQuestions([
-          {
-            questionText: "",
-            optionA: "",
-            optionB: "",
-            optionC: "",
-            optionD: "",
-            correctAnswer: "A",
-            marks: "1",
-            explanation: "",
-            difficulty: "Easy"
-          }
-        ]);
-        setSelectedSubtopicId("");
+        toast.success(editingQuizId ? "Quiz updated successfully!" : "Quiz created successfully!");
+        handleCancelEdit();
         fetchQuizzes();
       } else {
-        toast.error(data.error || "Failed to create quiz");
+        toast.error(data.error || "Failed to save quiz");
       }
     } catch (err: any) {
       toast.error(err.message || "An unexpected error occurred");
@@ -211,8 +256,12 @@ export default function ManageQuizzesPage() {
         <div className="lg:col-span-2 space-y-8">
           <Card className="border-zinc-200 shadow-md">
             <CardHeader className="bg-zinc-50 border-b border-zinc-100">
-              <CardTitle className="text-xl text-zinc-900">Manual Quiz Builder</CardTitle>
-              <CardDescription>Enter details and write individual quiz questions.</CardDescription>
+              <CardTitle className="text-xl text-zinc-900">
+                {editingQuizId ? "Edit Quiz" : "Manual Quiz Builder"}
+              </CardTitle>
+              <CardDescription>
+                {editingQuizId ? "Modify details and questions for this quiz." : "Enter details and write individual quiz questions."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -447,13 +496,26 @@ export default function ManageQuizzesPage() {
                   </div>
                 </div>
 
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-primary hover:bg-primary/95 text-white font-bold h-11 shadow-md transition-colors"
-                >
-                  {loading ? "Creating Quiz..." : "Create Quiz"}
-                </Button>
+                <div className="flex gap-4">
+                  {editingQuizId && (
+                    <Button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      disabled={loading}
+                      variant="outline"
+                      className="w-full border-zinc-300 text-zinc-700 font-bold h-11"
+                    >
+                      Cancel Edit
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-primary hover:bg-primary/95 text-white font-bold h-11 shadow-md transition-colors"
+                  >
+                    {loading ? (editingQuizId ? "Updating..." : "Creating...") : (editingQuizId ? "Update Quiz" : "Create Quiz")}
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
@@ -534,6 +596,14 @@ export default function ManageQuizzesPage() {
                       </div>
                     )}
                   </CardContent>
+                  <div className="p-3 bg-zinc-50 border-t border-zinc-100 flex justify-end space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(q)} className="h-8 text-xs">
+                      <Pencil className="w-3 h-3 mr-1" /> Edit
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDelete(q.id)} className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+                      <Trash2 className="w-3 h-3 mr-1" /> Delete
+                    </Button>
+                  </div>
                 </Card>
               ))
             ) : (

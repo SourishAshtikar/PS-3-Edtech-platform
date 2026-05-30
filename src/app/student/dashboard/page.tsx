@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BookOpen, HelpCircle, ArrowRight, Lock } from "lucide-react";
+import { Card, CardTitle, CardDescription } from "@/components/ui/card";
+import { BookOpen, ArrowRight } from "lucide-react";
+
+export const revalidate = 60; // Cache this page for 60 seconds
 
 export default async function SubjectSelectionPage() {
   const subjects = await prisma.subject.findMany({

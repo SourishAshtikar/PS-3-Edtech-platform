@@ -43,10 +43,7 @@ export default async function QuizDetailPage({ params }: { params: Promise<{ id:
     questions: quiz.questions.map((q) => ({
       id: q.id,
       questionText: q.questionText,
-      optionA: q.optionA,
-      optionB: q.optionB,
-      optionC: q.optionC,
-      optionD: q.optionD,
+      options: q.options,
       marks: q.marks,
     })),
     module: {

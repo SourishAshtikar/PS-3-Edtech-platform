@@ -36,66 +36,66 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
     });
   }
 
-  // 1.5. Fetch all modules & subtopics
-  const modules = await prisma.module.findMany({
-    where: { subjectId },
-    include: { subtopics: true },
-    orderBy: { moduleNo: 'asc' }
-  });
-
-  // 2. Fetch user progress for modules
-  const userProgress = await prisma.studentProgress.findMany({
-    where: { userId: user.id }
-  });
-
-  // 3. Fetch recommended simulations
-  const recommendedSimulations = await prisma.simulation.findMany({
-    where: { module: { subjectId } },
-    take: 2,
-    orderBy: { xpReward: 'desc' }
-  });
-
-  // 4. Fetch all quizzes
-  const quizzes = await prisma.quiz.findMany({
-    where: { module: { subjectId } },
-    include: {
-      module: true,
-      questions: true,
-      attempts: {
-        where: { userId: user.id },
-        orderBy: { createdAt: 'desc' }
+  // 2. Execute all independent queries concurrently
+  const [
+    modules,
+    userProgress,
+    recommendedSimulations,
+    quizzes,
+    enrollmentsTop,
+    higherRankCount,
+    subjectResources,
+    userBadges
+  ] = await Promise.all([
+    prisma.module.findMany({
+      where: { subjectId },
+      include: { subtopics: true },
+      orderBy: { moduleNo: 'asc' }
+    }),
+    prisma.studentProgress.findMany({
+      where: { userId: user.id }
+    }),
+    prisma.simulation.findMany({
+      where: { module: { subjectId } },
+      take: 2,
+      orderBy: { xpReward: 'desc' }
+    }),
+    prisma.quiz.findMany({
+      where: { module: { subjectId } },
+      include: {
+        module: true,
+        questions: true,
+        attempts: {
+          where: { userId: user.id },
+          orderBy: { createdAt: 'desc' }
+        }
+      },
+      orderBy: { title: 'asc' }
+    }),
+    prisma.subjectEnrollment.findMany({
+      where: { subjectId },
+      include: { user: true },
+      orderBy: { xp: 'desc' },
+      take: 3
+    }),
+    prisma.subjectEnrollment.count({
+      where: { 
+        subjectId, 
+        xp: { gt: enrollment.xp } 
       }
-    },
-    orderBy: { title: 'asc' }
-  });
+    }),
+    prisma.resource.findMany({
+      where: { subjectId },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.userBadge.findMany({
+      where: { userId: user.id },
+      include: { badge: true }
+    })
+  ]);
 
-  // 5. Fetch leaderboard top 3 (Based on SubjectEnrollment XP)
-  const enrollmentsTop = await prisma.subjectEnrollment.findMany({
-    where: { subjectId },
-    include: { user: true },
-    orderBy: { xp: 'desc' },
-    take: 3
-  });
   const topStudents = enrollmentsTop.map(e => ({ ...e.user, subjectXp: e.xp }));
-
-  // 6. Find user's overall rank
-  const allEnrollments = await prisma.subjectEnrollment.findMany({
-    where: { subjectId },
-    orderBy: { xp: 'desc' }
-  });
-  const classRank = allEnrollments.findIndex(e => e.userId === user.id) + 1;
-
-  // 7. Fetch Subject Resources
-  const subjectResources = await prisma.resource.findMany({
-    where: { subjectId },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  // 8. Fetch user badges
-  const userBadges = await prisma.userBadge.findMany({
-    where: { userId: user.id },
-    include: { badge: true }
-  });
+  const classRank = higherRankCount + 1;
 
   // 9. Calculate Overall Progress & Active Module
   const totalSubjectSubtopics = modules.reduce((sum, mod) => sum + (mod.subtopics?.length || 0), 0);

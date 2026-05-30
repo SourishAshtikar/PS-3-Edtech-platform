@@ -62,13 +62,7 @@ export async function POST(req: Request) {
           totalMarks,
           xpEarned,
           completed: true,
-          answers: {
-            create: answersData.map((a) => ({
-              questionId: a.questionId,
-              selectedOption: a.selectedOption,
-              isCorrect: a.isCorrect,
-            })),
-          },
+          answersData, // Stored as a JSON multiset instead of related rows
         },
       });
 

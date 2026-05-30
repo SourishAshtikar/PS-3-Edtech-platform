@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -16,6 +17,7 @@ model User {
   role          String    @default("student") // "student" or "faculty"
   xp            Int       @default(0)
   streak        Int       @default(0)
+  lastActiveDate DateTime?
   googleAccessToken  String?  @db.Text
   googleRefreshToken String?  @db.Text
   createdAt     DateTime  @default(now())
@@ -162,10 +164,7 @@ model Question {
   id            String   @id @default(cuid())
   quizId        String
   questionText  String
-  optionA       String
-  optionB       String
-  optionC       String
-  optionD       String
+  options       String[]
   correctAnswer String // "A", "B", "C", "D"
   marks         Int      @default(1)
   explanation   String?
@@ -184,28 +183,17 @@ model QuizAttempt {
   totalMarks Int
   xpEarned   Int      @default(0)
   completed  Boolean  @default(false)
+  answersData Json?   // Multiset of { questionId, selectedOption, isCorrect }
   createdAt  DateTime @default(now())
 
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   quiz       Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  answers    QuizAnswer[]
 
   @@index([userId])
   @@index([quizId])
 }
 
-model QuizAnswer {
-  id             String   @id @default(cuid())
-  attemptId      String
-  questionId     String
-  selectedOption String // "A", "B", "C", "D"
-  isCorrect      Boolean
 
-  attempt        QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-
-  @@index([attemptId])
-  @@index([questionId])
-}
 
 model Flashcard {
   id        String   @id @default(cuid())

@@ -12,10 +12,7 @@ import { QuizActive } from "@/components/student/QuizActive";
 interface Question {
   id: string;
   questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
+  options: string[];
   marks: number;
 }
 

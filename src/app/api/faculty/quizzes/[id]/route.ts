@@ -2,13 +2,34 @@ import { NextResponse } from "next/server";
 import { getOrCreateUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(req: Request) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getOrCreateUser();
     if (!user || user.role !== "faculty") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    const { id } = await params;
+
+    await prisma.quiz.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting quiz:", error);
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getOrCreateUser();
+    if (!user || user.role !== "faculty") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const { id } = await params;
     const body = await req.json();
     const { moduleId, subtopicId, title, difficulty, timeLimit, xpReward, questions, documentUrl } = body;
 
@@ -16,8 +37,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Create quiz with nested questions if manually created, or just documentUrl if doing document upload
-    const createdQuiz = await prisma.quiz.create({
+    // Delete existing questions
+    await prisma.question.deleteMany({
+      where: { quizId: id },
+    });
+
+    // Update quiz metadata and create new questions
+    const updatedQuiz = await prisma.quiz.update({
+      where: { id },
       data: {
         moduleId,
         subtopicId: subtopicId || null,
@@ -42,27 +69,9 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, quiz: createdQuiz });
+    return NextResponse.json({ success: true, quiz: updatedQuiz });
   } catch (error: any) {
-    console.error("Error creating quiz:", error);
+    console.error("Error updating quiz:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
-  }
-}
-
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const subjectId = searchParams.get("subjectId");
-
-    const quizzes = await prisma.quiz.findMany({
-      where: subjectId ? { module: { subjectId } } : undefined,
-      include: { module: true, questions: true },
-      orderBy: { title: "asc" },
-    });
-
-    return NextResponse.json(quizzes);
-  } catch (error: any) {
-    console.error("Error fetching quizzes:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

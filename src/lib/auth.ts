@@ -14,7 +14,7 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       if (!user.email) return false;
 
-      const adminEmail = process.env.INITIAL_ADMIN_EMAIL || "admin@example.com";
+      const adminEmail = process.env.INITIAL_ADMIN_EMAIL;
 
       let dbUser = await prisma.user.findUnique({
         where: { email: user.email },
@@ -37,9 +37,36 @@ export const authOptions: NextAuthOptions = {
           },
         });
       } else {
-        const updateData = { ...tokensData };
+        const updateData: any = { ...tokensData };
         if (user.email === adminEmail && dbUser.role !== "faculty") {
           updateData.role = "faculty";
+        }
+
+        // Streak calculation
+        const now = new Date();
+        if (!dbUser.lastActiveDate) {
+          updateData.lastActiveDate = now;
+          updateData.streak = 1;
+        } else {
+          const lastActive = new Date(dbUser.lastActiveDate);
+          
+          // Reset times to midnight to compare exact calendar days
+          const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const lastActiveMidnight = new Date(lastActive.getFullYear(), lastActive.getMonth(), lastActive.getDate());
+          
+          const diffTime = todayDate.getTime() - lastActiveMidnight.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
+          
+          if (diffDays === 1) {
+            // Logged in yesterday, increment streak
+            updateData.streak = (dbUser.streak || 0) + 1;
+            updateData.lastActiveDate = now;
+          } else if (diffDays > 1) {
+            // Missed a day, reset streak
+            updateData.streak = 1;
+            updateData.lastActiveDate = now;
+          }
+          // If diffDays === 0, they already logged in today, do nothing
         }
         
         if (Object.keys(updateData).length > 0) {

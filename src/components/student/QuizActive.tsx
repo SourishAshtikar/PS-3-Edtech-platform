@@ -12,10 +12,7 @@ import { useParams } from "next/navigation";
 interface Question {
   id: string;
   questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
+  options: string[];
   marks: number;
 }
 
@@ -231,12 +228,8 @@ export function QuizActive({ quiz, onBack }: QuizActiveProps) {
           {currentQuestion.questionText}
         </h2>
         <div className="space-y-4">
-          {[
-            { key: "A", label: currentQuestion.optionA },
-            { key: "B", label: currentQuestion.optionB },
-            { key: "C", label: currentQuestion.optionC },
-            { key: "D", label: currentQuestion.optionD },
-          ].map(({ key, label }) => {
+          {currentQuestion.options.map((label, index) => {
+            const key = String.fromCharCode(65 + index);
             const isSelected = selectedAnswers[currentQuestion.id] === key;
             return (
               <button
