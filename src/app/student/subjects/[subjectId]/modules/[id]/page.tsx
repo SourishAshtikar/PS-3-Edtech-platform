@@ -158,7 +158,7 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
 
                   {((subtopic.id in module1Quizzes || subtopic.id in module2Quizzes) || (subtopic.quizzes && subtopic.quizzes.length > 0)) && (
                     <ResourceLinkTracker subtopicId={subtopic.id} moduleId={id} resourceType="quiz">
-                      <Link href={`/student/subjects/${subjectId}/quizzes/${subtopic.id}`}>
+                      <Link href={`/student/subjects/${subjectId}/quizzes/${(subtopic.quizzes && subtopic.quizzes.length > 0) ? subtopic.quizzes[0].id : subtopic.id}`}>
                         <Button variant="outline" className="bg-white hover:bg-red-50 border-red-200 text-red-700 text-sm font-bold h-11 px-6 shadow-sm">
                           <Target className="w-5 h-5 mr-2" /> Attempt Quiz
                         </Button>

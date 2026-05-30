@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Trophy, AlertTriangle, ArrowRight, CheckCircle2, RotateCcw, XCircle } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 interface Question {
   id: string;
@@ -30,6 +31,8 @@ interface QuizActiveProps {
 }
 
 export function QuizActive({ quiz, onBack }: QuizActiveProps) {
+  const params = useParams();
+  const subjectId = params?.subjectId as string;
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(quiz.timeLimit * 60);
@@ -194,7 +197,7 @@ export function QuizActive({ quiz, onBack }: QuizActiveProps) {
           )}
         </CardContent>
         <CardFooter className="bg-zinc-50 border-t border-zinc-100 p-6 flex flex-col sm:flex-row gap-4">
-          <Link href="/student/quizzes" className="w-full">
+          <Link href={subjectId ? `/student/subjects/${subjectId}/quizzes` : "/student/dashboard"} className="w-full">
             <Button className="w-full bg-primary hover:bg-primary/90 text-white font-semibold">
               All Quizzes
             </Button>

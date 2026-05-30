@@ -86,8 +86,20 @@ export function QuizContainer({ quiz }: QuizContainerProps) {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="bg-zinc-50 border-t border-zinc-100 p-6 flex justify-end">
-          <Button size="lg" onClick={() => setStarted(true)} className="bg-primary hover:bg-primary/90 text-white font-bold px-8">
+        <CardFooter className="bg-zinc-50 border-t border-zinc-100 p-6 flex justify-between items-center">
+          {quiz.questions.length === 0 ? (
+            <p className="text-red-500 font-semibold text-sm flex items-center">
+              <AlertCircle className="w-4 h-4 mr-2" /> This quiz has no questions yet.
+            </p>
+          ) : (
+            <div />
+          )}
+          <Button 
+            size="lg" 
+            onClick={() => setStarted(true)} 
+            disabled={quiz.questions.length === 0}
+            className="bg-primary hover:bg-primary/90 text-white font-bold px-8"
+          >
             Begin Quiz Now
           </Button>
         </CardFooter>
