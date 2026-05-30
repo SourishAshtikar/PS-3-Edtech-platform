@@ -7,6 +7,7 @@ import { WhitelistFacultyForm } from "@/components/faculty/WhitelistFacultyForm"
 import { CreateSubjectForm } from "@/components/faculty/CreateSubjectForm";
 import { ConnectDriveButton } from "@/components/faculty/ConnectDriveButton";
 import { DeleteSubjectButton } from "@/components/faculty/DeleteSubjectButton";
+import { FacultyListCard } from "@/components/faculty/FacultyListModal";
 import { getOrCreateUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -30,7 +31,11 @@ export default async function FacultyDashboardPage() {
 
   const totalStudents = await prisma.user.count({ where: { role: 'student' } });
   const totalSubjects = subjects.length;
-  const activeModules = subjects.reduce((acc, sub) => acc + sub._count.modules, 0);
+  const facultyMembers = await prisma.user.findMany({ 
+    where: { role: 'faculty' },
+    select: { id: true, name: true, email: true }
+  });
+  const totalFaculty = facultyMembers.length;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -66,17 +71,7 @@ export default async function FacultyDashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-6 flex items-center space-x-4">
-            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-zinc-500">Total Modules</p>
-              <h3 className="text-2xl font-bold">{activeModules}</h3>
-            </div>
-          </CardContent>
-        </Card>
+        <FacultyListCard totalFaculty={totalFaculty} facultyMembers={facultyMembers} />
         <Link href="/faculty/leaderboard">
           <Card className="border-zinc-200 hover:border-amber-300 hover:shadow-md transition-all cursor-pointer h-full bg-gradient-to-br from-white to-amber-50">
             <CardContent className="p-6 flex items-center space-x-4">

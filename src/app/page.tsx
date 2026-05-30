@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HeroButtons, FooterButtons } from "@/components/home/HomeButtons";
 import { Button } from "@/components/ui/button";
 import { ModuleCard } from "@/components/cards/ModuleCard";
 import { SimulationCard } from "@/components/cards/SimulationCard";
@@ -20,27 +21,13 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/10 blur-[100px] rounded-full"></div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-8">
-            <Badge className="bg-white/20 text-white hover:bg-white/30 px-4 py-1 text-sm mb-4 backdrop-blur-sm border-none">
-              New: Interactive Learning Portal Active
-            </Badge>
             <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight leading-tight">
               Level Up Your Knowledge through <span className="text-amber-400">Gamified</span> Learning
             </h1>
             <p className="text-xl text-primary-foreground/90 max-w-2xl mx-auto font-medium">
               An interactive educational experience featuring structured learning modules, hands-on virtual simulations, and friendly leaderboard competition.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Link href="/sign-up">
-                <Button size="lg" className="bg-white text-primary hover:bg-zinc-100 font-bold px-8 h-14 text-lg shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_rgba(255,255,255,0.5)] transition-all">
-                  Start Learning Now
-                </Button>
-              </Link>
-              <Link href="/student/modules">
-                <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 font-bold px-8 h-14 text-lg bg-transparent">
-                  Explore Learning Paths
-                </Button>
-              </Link>
-            </div>
+            <HeroButtons />
           </div>
         </div>
       </section>
@@ -183,18 +170,7 @@ export default function LandingPage() {
           <GraduationCap className="w-16 h-16 mx-auto text-primary mb-6 animate-pulse" />
           <h2 className="text-4xl font-bold mb-6">Begin Your Learning Journey Today</h2>
           <p className="text-xl text-zinc-300 mb-10">Join your peers in the most engaging way to study courses, solve assessments, and top the leaderboard.</p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link href="/sign-up">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-white px-8 h-14 text-lg">
-                Create Student Account
-              </Button>
-            </Link>
-            <Link href="/sign-in">
-              <Button size="lg" variant="outline" className="border-zinc-600 text-white hover:bg-zinc-800 hover:text-white px-8 h-14 text-lg bg-transparent">
-                Sign In to Dashboard
-              </Button>
-            </Link>
-          </div>
+          <FooterButtons />
         </div>
       </section>
     </div>
