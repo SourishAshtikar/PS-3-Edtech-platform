@@ -44,23 +44,26 @@ export default async function QuizzesPage({ params }: { params: Promise<{ subjec
         {quizzes.map((quiz) => {
           const attempt = quiz.attempts[0];
           const isCompleted = attempt?.completed;
-          const status = isCompleted ? "completed" : "pending";
+          const percentage = attempt ? (attempt.score / attempt.totalMarks) * 100 : 0;
+          const hasPassed = percentage >= 70;
+          const status = isCompleted ? (hasPassed ? "passed" : "failed") : "pending";
 
           return (
-            <Card key={quiz.id} className={`flex flex-col h-full hover:shadow-lg transition-shadow border-zinc-200 ${status === 'completed' ? 'bg-zinc-50 opacity-80' : ''}`}>
+            <Card key={quiz.id} className={`flex flex-col h-full hover:shadow-lg transition-shadow border-zinc-200 ${status === 'passed' ? 'bg-zinc-50 opacity-80' : ''}`}>
               <CardHeader>
                 <div className="flex justify-between items-start mb-2">
                   <Badge variant="outline" className="text-zinc-600 bg-white">
                     Module {quiz.module.moduleNo}
                   </Badge>
                   {status === 'pending' && <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Pending</Badge>}
-                  {status === 'completed' && <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Completed</Badge>}
+                  {status === 'failed' && <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Failed</Badge>}
+                  {status === 'passed' && <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Completed</Badge>}
                 </div>
                 <CardTitle className="text-xl">{quiz.title}</CardTitle>
               </CardHeader>
               <CardContent className="flex-1">
                 <div className="space-y-2 text-sm text-zinc-600">
-                  {status !== 'completed' ? (
+                  {status === 'pending' ? (
                     <>
                       <div className="flex items-center space-x-2">
                         <Clock className="w-4 h-4" /> <span>Time Limit: {quiz.timeLimit} mins</span>
@@ -85,12 +88,18 @@ export default async function QuizzesPage({ params }: { params: Promise<{ subjec
                 </div>
               </CardContent>
               <CardFooter className="pt-4 border-t border-zinc-100 mt-auto">
-                {status !== 'completed' ? (
+                {status === 'pending' && (
                   <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}`} className="w-full">
                     <Button className="w-full bg-primary hover:bg-primary/90 text-white">Start Quiz</Button>
                   </Link>
-                ) : (
-                  <Button variant="outline" className="w-full text-zinc-600" disabled>Completed</Button>
+                )}
+                {status === 'failed' && (
+                  <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}`} className="w-full">
+                    <Button variant="outline" className="w-full border-zinc-300 text-zinc-700 hover:bg-zinc-100 font-semibold">Retry Quiz</Button>
+                  </Link>
+                )}
+                {status === 'passed' && (
+                  <Button variant="outline" className="w-full text-green-700 border-green-200 bg-green-50" disabled>Completed</Button>
                 )}
               </CardFooter>
             </Card>
