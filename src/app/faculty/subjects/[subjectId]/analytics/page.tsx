@@ -38,7 +38,7 @@ export default async function FacultyAnalyticsPage({ params }: { params: Promise
           progress: {
             where: { module: { subjectId } }
           },
-          userBadges: true,
+          userBadges: { include: { badge: true } },
         }
       }
     },
@@ -314,7 +314,7 @@ export default async function FacultyAnalyticsPage({ params }: { params: Promise
                         <div className="flex justify-center -space-x-2">
                           {student.userBadges.slice(0, 3).map(ub => (
                             <div key={ub.id} className="w-6 h-6 rounded-full bg-zinc-100 border-2 border-white flex items-center justify-center text-[10px]" title={ub.badge.name}>
-                              {ub.badge.iconUrl}
+                              {ub.badge.icon}
                             </div>
                           ))}
                           {student.userBadges.length > 3 && (

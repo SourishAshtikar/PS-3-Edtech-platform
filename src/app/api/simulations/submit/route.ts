@@ -81,6 +81,10 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ success: true, xpEarned: result.xpEarned, userXp: result.updatedUser.xp });
     } else {
+      if (!subtopic) {
+        return NextResponse.json({ error: "Invalid state: subtopic is null" }, { status: 500 });
+      }
+
       // Handle mock simulation completion via StudentProgress to prevent foreign key errors
       const existingProgress = await prisma.studentProgress.findUnique({
         where: { userId_moduleId: { userId: user.id, moduleId: subtopic.moduleId } }
