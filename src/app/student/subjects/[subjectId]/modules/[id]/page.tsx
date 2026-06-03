@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, PlayCircle, FileText, CheckCircle2, Gamepad2, Target, Download, Book, BrainCircuit, CreditCard, Link as LinkIcon, HelpCircle, Layers } from "lucide-react";
+import { ChevronLeft, PlayCircle, FileText, CheckCircle2, Gamepad2, Target, Download, Book, BrainCircuit, CreditCard, Link as LinkIcon, HelpCircle, Layers, Headphones } from "lucide-react";
 import { module1Quizzes } from "@/data/module1QuizData";
 import { module2Quizzes } from "@/data/module2QuizData";
 
@@ -121,14 +121,16 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
           const hasSim = !!subtopic.simulationUrl || (subtopic.simulations && subtopic.simulations.length > 0);
           const hasQuiz = ((subtopic.id in module1Quizzes || subtopic.id in module2Quizzes) || (subtopic.quizzes && subtopic.quizzes.length > 0));
           const hasFlashcards = subtopic.flashcardDecks && subtopic.flashcardDecks.length > 0;
+          const hasAudio = !!subtopic.audioUrl;
 
           const isNotesCompleted = !hasNotes || completedResources.includes(`${subtopic.id}-notes`);
           // We check for 'simulation' (from clicking the button) or 'sandbox_completed' (from actually submitting the sandbox)
           const isSimCompleted = !hasSim || completedResources.includes(`${subtopic.id}-simulation`) || completedResources.includes(`${subtopic.id}-sandbox_completed`);
           const isQuizCompleted = !hasQuiz || completedResources.includes(`${subtopic.id}-quiz`);
           const isFlashcardsCompleted = !hasFlashcards || completedResources.includes(`${subtopic.id}-flashcards`);
+          const isAudioCompleted = !hasAudio || completedResources.includes(`${subtopic.id}-audio`);
 
-          const canComplete = isNotesCompleted && isSimCompleted && isQuizCompleted && isFlashcardsCompleted;
+          const canComplete = isNotesCompleted && isSimCompleted && isQuizCompleted && isFlashcardsCompleted && isAudioCompleted;
 
           return (
           <Card key={subtopic.id} className="border-zinc-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden bg-white">
@@ -158,6 +160,29 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
                   </div>
                 )}
 
+                {/* Embedded Audio Player */}
+                {subtopic.audioUrl && (
+                  <div className="w-full mb-5 max-w-3xl mx-auto">
+                    <p className="text-sm font-bold text-zinc-700 mb-2 flex items-center">
+                      <Headphones className="w-4 h-4 mr-2 text-purple-600" /> Audio Lesson
+                    </p>
+                    <ResourceLinkTracker subtopicId={subtopic.id} moduleId={id} resourceType="audio">
+                      <audio 
+                        controls 
+                        className="w-full h-12 rounded-lg bg-zinc-50 border border-zinc-200 shadow-sm"
+                        src={subtopic.audioDownloadUrl || subtopic.audioUrl}
+                      >
+                        Your browser does not support the audio element.
+                      </audio>
+                    </ResourceLinkTracker>
+                    <div className="mt-2 text-right">
+                       <a href={subtopic.audioUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-purple-600 hover:underline">
+                         Open in Google Drive
+                       </a>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-4 border-t border-zinc-100 pt-5 mt-auto">
                   {subtopic.notesUrl && (
                     <ResourceLinkTracker subtopicId={subtopic.id} moduleId={id} resourceType="notes">
@@ -168,6 +193,8 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
                       </a>
                     </ResourceLinkTracker>
                   )}
+
+                  {/* Audio moved above */}
 
                   {(subtopic.simulationUrl || (subtopic.simulations && subtopic.simulations.length > 0)) && (
                     <ResourceLinkTracker subtopicId={subtopic.id} moduleId={id} resourceType="simulation">

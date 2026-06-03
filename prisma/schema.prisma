@@ -98,6 +98,8 @@ model Subtopic {
   referenceDownloadUrl  String?
   otherUrl              String?
   otherDownloadUrl      String?
+  audioUrl              String?
+  audioDownloadUrl      String?
   simulationUrl         String?
   learningOutcome       String?
 

@@ -25,6 +25,8 @@ interface SubtopicForm {
   flashCardsDownloadUrl?: string;
   otherUrl: string;
   otherDownloadUrl?: string;
+  audioUrl: string;
+  audioDownloadUrl?: string;
   simulationUrl: string;
   selectedResourceType?: string;
 }
@@ -38,6 +40,7 @@ const initialSubtopicState = {
   flashCardsUrl: "", flashCardsDownloadUrl: "", 
   referenceUrl: "", referenceDownloadUrl: "", 
   otherUrl: "", otherDownloadUrl: "", 
+  audioUrl: "", audioDownloadUrl: "",
   selectedResourceType: "none" 
 };
 
@@ -123,6 +126,8 @@ export default function ManageModulesPage() {
         referenceDownloadUrl: st.referenceDownloadUrl || "",
         otherUrl: st.otherUrl || "",
         otherDownloadUrl: st.otherDownloadUrl || "",
+        audioUrl: st.audioUrl || "",
+        audioDownloadUrl: st.audioDownloadUrl || "",
       })));
     } else {
       setSubtopics([{...initialSubtopicState}]);
@@ -171,6 +176,7 @@ export default function ManageModulesPage() {
                          resourceType === "mindMap" ? "mindMapUrl" :
                          resourceType === "flashCards" ? "flashCardsUrl" :
                          resourceType === "reference" ? "referenceUrl" :
+                         resourceType === "audio" ? "audioUrl" :
                          "otherUrl";
                          
         const downloadField = resourceType === "notes" ? "notesDownloadUrl" :
@@ -178,6 +184,7 @@ export default function ManageModulesPage() {
                               resourceType === "mindMap" ? "mindMapDownloadUrl" :
                               resourceType === "flashCards" ? "flashCardsDownloadUrl" :
                               resourceType === "reference" ? "referenceDownloadUrl" :
+                              resourceType === "audio" ? "audioDownloadUrl" :
                               "otherDownloadUrl";
 
         handleSubtopicChange(index, urlField as any, data.subtopic[urlField]);
@@ -413,6 +420,7 @@ export default function ManageModulesPage() {
                             <option value="mindMap">Mind Map (File Upload)</option>
                             <option value="flashCards">Flash Cards (File Upload)</option>
                             <option value="reference">Reference Content (File Upload)</option>
+                            <option value="audio">Audio (File Upload)</option>
                             <option value="other">Other (File Upload)</option>
                           </select>
 
@@ -442,7 +450,7 @@ export default function ManageModulesPage() {
                             </div>
                           )}
 
-                          {["notes", "quizFile", "mindMap", "flashCards", "reference", "other"].includes(st.selectedResourceType || "") && (
+                          {["notes", "quizFile", "mindMap", "flashCards", "reference", "audio", "other"].includes(st.selectedResourceType || "") && (
                             <div className="mb-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100 space-y-3">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
@@ -503,6 +511,7 @@ export default function ManageModulesPage() {
                             {st.mindMapUrl && <div className="text-[11px] flex justify-between bg-zinc-100 p-2 rounded items-center"><span>🧠 Mind Map File Attached</span> <Button type="button" variant="ghost" size="sm" className="h-5 text-red-500 p-0" onClick={() => {handleSubtopicChange(index, "mindMapUrl", ""); handleSubtopicChange(index, "mindMapDownloadUrl", "")}}>Remove</Button></div>}
                             {st.flashCardsUrl && <div className="text-[11px] flex justify-between bg-zinc-100 p-2 rounded items-center"><span>🎴 Flash Cards File Attached</span> <Button type="button" variant="ghost" size="sm" className="h-5 text-red-500 p-0" onClick={() => {handleSubtopicChange(index, "flashCardsUrl", ""); handleSubtopicChange(index, "flashCardsDownloadUrl", "")}}>Remove</Button></div>}
                             {st.referenceUrl && <div className="text-[11px] flex justify-between bg-zinc-100 p-2 rounded items-center"><span>📚 Reference File Attached</span> <Button type="button" variant="ghost" size="sm" className="h-5 text-red-500 p-0" onClick={() => {handleSubtopicChange(index, "referenceUrl", ""); handleSubtopicChange(index, "referenceDownloadUrl", "")}}>Remove</Button></div>}
+                            {st.audioUrl && <div className="text-[11px] flex justify-between bg-zinc-100 p-2 rounded items-center"><span>🎵 Audio File Attached</span> <Button type="button" variant="ghost" size="sm" className="h-5 text-red-500 p-0" onClick={() => {handleSubtopicChange(index, "audioUrl", ""); handleSubtopicChange(index, "audioDownloadUrl", "")}}>Remove</Button></div>}
                             {st.otherUrl && <div className="text-[11px] flex justify-between bg-zinc-100 p-2 rounded items-center"><span>🔗 Other File Attached</span> <Button type="button" variant="ghost" size="sm" className="h-5 text-red-500 p-0" onClick={() => {handleSubtopicChange(index, "otherUrl", ""); handleSubtopicChange(index, "otherDownloadUrl", "")}}>Remove</Button></div>}
                           </div>
                         </div>
@@ -570,10 +579,11 @@ export default function ManageModulesPage() {
                               {st.learningOutcome && (
                                 <p className="text-[10px] text-zinc-400 italic">LO: {st.learningOutcome}</p>
                               )}
-                              {(st.notesUrl || st.videoUrl) && (
+                              {(st.notesUrl || st.videoUrl || st.audioUrl) && (
                                 <div className="mt-1 flex gap-2">
                                   {st.notesUrl && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">Notes Attached</span>}
                                   {st.videoUrl && <span className="text-[9px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-bold">Video Attached</span>}
+                                  {st.audioUrl && <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold">Audio Attached</span>}
                                 </div>
                               )}
                             </div>

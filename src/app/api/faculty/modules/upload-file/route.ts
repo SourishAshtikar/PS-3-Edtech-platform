@@ -95,10 +95,9 @@ export async function POST(req: Request) {
     }
 
     // 4. Create folder hierarchy
-    const rootFolderId = await getOrCreateFolder("Notes Uploaded to Website");
-    const subjectFolderId = await getOrCreateFolder(subtopic.module.subject.name, rootFolderId);
-    const moduleFolderId = await getOrCreateFolder(`Module ${subtopic.module.moduleNo}: ${subtopic.module.title}`, subjectFolderId);
+    const moduleFolderId = await getOrCreateFolder(`Module ${subtopic.module.moduleNo}: ${subtopic.module.title}`);
     const subtopicFolderId = await getOrCreateFolder(subtopic.title, moduleFolderId);
+
 
     // 5. Convert file to stream for upload
     const arrayBuffer = await file.arrayBuffer();
@@ -155,6 +154,9 @@ export async function POST(req: Request) {
     } else if (resourceType === "reference") {
       updateData.referenceUrl = uploadedFile.data.webViewLink;
       updateData.referenceDownloadUrl = uploadedFile.data.webContentLink;
+    } else if (resourceType === "audio") {
+      updateData.audioUrl = uploadedFile.data.webViewLink;
+      updateData.audioDownloadUrl = uploadedFile.data.webContentLink;
     } else if (resourceType === "other") {
       updateData.otherUrl = uploadedFile.data.webViewLink;
       updateData.otherDownloadUrl = uploadedFile.data.webContentLink;
