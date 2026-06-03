@@ -11,13 +11,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     const { id } = await params;
 
-    await prisma.quiz.delete({
+    await prisma.flashcardDeck.delete({
       where: { id },
     });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("Error deleting quiz:", error);
+    console.error("Error deleting flashcard deck:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
@@ -31,48 +31,40 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const { id } = await params;
     const body = await req.json();
-    const { moduleId, subtopicId, title, difficulty, timeLimit, xpReward, questions, documentUrl, totalQuestionsToAsk } = body;
+    const { moduleId, subtopicId, title, documentUrl, cards } = body;
 
-    if (!moduleId || !title || !difficulty || !timeLimit || !xpReward) {
+    if (!moduleId || !title) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Delete existing questions
-    await prisma.question.deleteMany({
-      where: { quizId: id },
+    // Delete existing cards
+    await prisma.flashcard.deleteMany({
+      where: { flashcardDeckId: id },
     });
 
-    // Update quiz metadata and create new questions
-    const updatedQuiz = await prisma.quiz.update({
+    // Update deck metadata and create new cards
+    const updatedDeck = await prisma.flashcardDeck.update({
       where: { id },
       data: {
         moduleId,
         subtopicId: subtopicId || null,
         title,
-        difficulty,
-        timeLimit: Number(timeLimit),
-        xpReward: Number(xpReward),
-        totalQuestionsToAsk: totalQuestionsToAsk ? Number(totalQuestionsToAsk) : null,
         documentUrl: documentUrl || null,
-        questions: {
-          create: (questions || []).map((q: any) => ({
-            questionText: q.questionText,
-            options: q.options || [q.optionA, q.optionB, q.optionC, q.optionD].filter(Boolean),
-            correctAnswer: q.correctAnswer, // "A", "B", "C", "D"
-            marks: Number(q.marks || 1),
-            explanation: q.explanation || null,
-            difficulty: q.difficulty || difficulty,
+        cards: {
+          create: (cards || []).map((c: any) => ({
+            question: c.question,
+            answer: c.answer,
           })),
         },
       },
       include: {
-        questions: true,
+        cards: true,
       },
     });
 
-    return NextResponse.json({ success: true, quiz: updatedQuiz });
+    return NextResponse.json({ success: true, deck: updatedDeck });
   } catch (error: any) {
-    console.error("Error updating quiz:", error);
+    console.error("Error updating flashcard deck:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

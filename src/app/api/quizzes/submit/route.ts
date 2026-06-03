@@ -29,25 +29,41 @@ export async function POST(req: Request) {
     }
 
     // Evaluate answers
-    let score = 0;
-    const totalMarks = quiz.questions.reduce((sum, q) => sum + q.marks, 0);
-    const answersData: { questionId: string; selectedOption: string; isCorrect: boolean }[] = [];
+    const totalMarks = answers.reduce((sum, a) => {
+      const q = quiz.questions.find(q => q.id === a.questionId);
+      return sum + (q?.marks || 0);
+    }, 0);
 
-    for (const q of quiz.questions) {
-      const submitted = answers.find((a) => a.questionId === q.id);
-      const selectedOption = submitted ? submitted.selectedOption : "";
-      const isCorrect = selectedOption === q.correctAnswer;
-      if (isCorrect) {
-        score += q.marks;
-      }
+    const answersData: { 
+      questionId: string; 
+      selectedOption: string; 
+      isCorrect: boolean;
+      correctAnswer: string;
+      explanation: string | null;
+      questionText: string;
+      options: string[];
+    }[] = [];
+
+    let score = 0;
+    for (const submitted of answers) {
+      const q = quiz.questions.find(q => q.id === submitted.questionId);
+      if (!q) continue;
+
+      const isCorrect = submitted.selectedOption === q.correctAnswer;
+      if (isCorrect) score += q.marks;
+
       answersData.push({
         questionId: q.id,
-        selectedOption,
+        selectedOption: submitted.selectedOption,
+        correctAnswer: q.correctAnswer,
         isCorrect,
+        explanation: q.explanation || null,
+        questionText: q.questionText,
+        options: q.options
       });
     }
 
-    const percentage = quiz.questions.length > 0 ? (score / quiz.questions.length) * 100 : 0;
+    const percentage = answers.length > 0 ? (score / totalMarks) * 100 : 0;
     const isPassed = percentage >= 70;
     const xpEarned = isPassed ? quiz.xpReward : 0;
 
@@ -128,10 +144,11 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       score,
-      totalQuestions: quiz.questions.length,
+      totalQuestions: answers.length,
       xpEarned: result.xpEarned,
       unlockedBadge: result.unlockedBadge,
       userXp: result.updatedUser.xp,
+      answersData,
     });
   } catch (error: any) {
     console.error("Quiz submission error:", error);

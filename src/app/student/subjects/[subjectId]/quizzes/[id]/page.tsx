@@ -32,6 +32,14 @@ export default async function QuizDetailPage({ params }: { params: Promise<{ id:
     notFound();
   }
 
+  // Shuffle questions randomly
+  const shuffledQuestions = [...quiz.questions].sort(() => Math.random() - 0.5);
+  
+  // Slice to totalQuestionsToAsk if defined
+  const displayQuestions = quiz.totalQuestionsToAsk 
+    ? shuffledQuestions.slice(0, quiz.totalQuestionsToAsk)
+    : shuffledQuestions;
+
   // Cast type to match QuizContainer expectations
   const typedQuiz = {
     id: quiz.id,
@@ -40,7 +48,7 @@ export default async function QuizDetailPage({ params }: { params: Promise<{ id:
     difficulty: quiz.difficulty,
     timeLimit: quiz.timeLimit,
     xpReward: quiz.xpReward,
-    questions: quiz.questions.map((q) => ({
+    questions: displayQuestions.map((q) => ({
       id: q.id,
       questionText: q.questionText,
       options: q.options,

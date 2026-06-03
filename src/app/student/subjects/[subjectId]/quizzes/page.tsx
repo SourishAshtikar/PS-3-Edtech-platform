@@ -69,7 +69,7 @@ export default async function QuizzesPage({ params }: { params: Promise<{ subjec
                         <Clock className="w-4 h-4" /> <span>Time Limit: {quiz.timeLimit} mins</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Target className="w-4 h-4" /> <span>{quiz.questions.length} Questions</span>
+                        <Target className="w-4 h-4" /> <span>{quiz.totalQuestionsToAsk || quiz.questions.length} Questions</span>
                       </div>
                       <div className="flex items-center space-x-2 text-amber-600 font-medium">
                         <Trophy className="w-4 h-4" /> <span>{quiz.xpReward} XP Available</span>
@@ -94,12 +94,24 @@ export default async function QuizzesPage({ params }: { params: Promise<{ subjec
                   </Link>
                 )}
                 {status === 'failed' && (
-                  <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}`} className="w-full">
-                    <Button variant="outline" className="w-full border-zinc-300 text-zinc-700 hover:bg-zinc-100 font-semibold">Retry Quiz</Button>
-                  </Link>
+                  <div className="w-full flex flex-col space-y-2">
+                    <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}`} className="w-full">
+                      <Button variant="outline" className="w-full border-zinc-300 text-zinc-700 hover:bg-zinc-100 font-semibold">Retry Quiz</Button>
+                    </Link>
+                    <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}/attempts/${attempt.id}`} className="w-full">
+                      <Button variant="ghost" className="w-full text-zinc-500 hover:text-primary text-xs">Review Last Attempt</Button>
+                    </Link>
+                  </div>
                 )}
                 {status === 'passed' && (
-                  <Button variant="outline" className="w-full text-green-700 border-green-200 bg-green-50" disabled>Completed</Button>
+                  <div className="w-full flex flex-col space-y-2">
+                    <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}`} className="w-full">
+                      <Button variant="outline" className="w-full text-green-700 border-green-200 bg-green-50 hover:bg-green-100 font-semibold">Retake Quiz</Button>
+                    </Link>
+                    <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}/attempts/${attempt.id}`} className="w-full">
+                      <Button variant="ghost" className="w-full text-zinc-500 hover:text-primary text-xs">Review Last Attempt</Button>
+                    </Link>
+                  </div>
                 )}
               </CardFooter>
             </Card>

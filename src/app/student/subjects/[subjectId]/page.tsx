@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import {
   Flame, Trophy, Play, BookOpen, Target, Zap, Clock, Star,
   Gamepad2, Users, FileText, ExternalLink, Award, CheckCircle,
-  ArrowRight, Book
+  ArrowRight, Book, Layers
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SubjectResourceCard } from "@/components/cards/SubjectResourceCard";
@@ -45,7 +45,8 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
     enrollmentsTop,
     higherRankCount,
     subjectResources,
-    userBadges
+    userBadges,
+    flashcardDecks
   ] = await Promise.all([
     prisma.module.findMany({
       where: { subjectId },
@@ -91,6 +92,11 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
     prisma.userBadge.findMany({
       where: { userId: user.id },
       include: { badge: true }
+    }),
+    prisma.flashcardDeck.findMany({
+      where: { module: { subjectId } },
+      include: { module: true, cards: true },
+      orderBy: { title: 'asc' }
     })
   ]);
 
@@ -151,6 +157,7 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
                 <div>
                   <div className="text-[10px] font-bold text-white/75 uppercase tracking-wider mb-0.5">Daily Streak</div>
                   <div className="text-2xl font-bold tracking-tight">{user.streak} Days</div>
+                  <div className="text-[10px] text-white/60 mt-0.5">Max Streak: {(user as any).maxStreak || 0} Days</div>
                 </div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors rounded-xl p-4 flex-1 flex items-center space-x-4 border border-white/10">
@@ -340,7 +347,7 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
                           <Clock className="w-3.5 h-3.5" /> <span>{quiz.timeLimit}m limit</span>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <Target className="w-3.5 h-3.5" /> <span>{quiz.questions.length} Questions</span>
+                          <Target className="w-3.5 h-3.5" /> <span>{quiz.totalQuestionsToAsk || quiz.questions.length} Questions</span>
                         </div>
                         <div className="flex items-center text-amber-600 font-bold">
                           <Zap className="w-3.5 h-3.5 mr-0.5" /> <span>+{quiz.xpReward} XP</span>
@@ -349,9 +356,18 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
                     </CardContent>
                     <div className="px-6 pb-4">
                       {isCompleted ? (
-                        <Button variant="outline" disabled className="w-full text-xs font-semibold h-9">
-                          Attempted
-                        </Button>
+                        <div className="w-full flex flex-col space-y-2">
+                          <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}`} className="w-full block">
+                            <Button variant="outline" className="w-full border-zinc-300 text-zinc-700 hover:bg-zinc-100 font-semibold text-xs h-9 shadow-sm">
+                              Retake Quiz
+                            </Button>
+                          </Link>
+                          <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}/attempts/${attempt.id}`} className="w-full block">
+                            <Button variant="ghost" className="w-full text-zinc-500 hover:text-primary text-xs h-8">
+                              Review Last Attempt
+                            </Button>
+                          </Link>
+                        </div>
                       ) : (
                         <Link href={`/student/subjects/${subjectId}/quizzes/${quiz.id}`} className="w-full block">
                           <Button className="w-full bg-primary hover:bg-primary/95 text-white text-xs font-semibold h-9 shadow-sm">
@@ -363,6 +379,53 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
                   </Card>
                 );
               })}
+            </div>
+          </div>
+
+          {/* 4. Flashcards & Study Decks */}
+          <div>
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="text-2xl font-bold text-zinc-900 flex items-center">
+                  <Layers className="w-6 h-6 mr-2.5 text-primary" /> Flashcards & Study Decks
+                </h3>
+                <p className="text-zinc-500 text-sm mt-0.5">Review key terms and concepts interactively.</p>
+              </div>
+              <Link href={`/student/subjects/${subjectId}/flashcards`} className="text-sm font-semibold text-primary hover:underline flex items-center">
+                All Decks <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {flashcardDecks.map((deck) => (
+                <Card key={deck.id} className="hover:border-primary/30 transition-all duration-200 bg-white">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <Badge variant="outline" className="text-[10px] px-2 border-zinc-200">
+                        Module {deck.module.moduleNo}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-base font-bold text-zinc-800 line-clamp-1">{deck.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="flex items-center justify-between text-xs text-zinc-500 font-medium">
+                      <div className="flex items-center space-x-1">
+                        <Layers className="w-3.5 h-3.5" /> <span>{deck.cards?.length || 0} Cards</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <div className="px-6 pb-4">
+                    <Link href={`/student/subjects/${subjectId}/flashcards/${deck.id}`} className="w-full block">
+                      <Button variant="outline" className="w-full border-zinc-300 text-zinc-700 hover:bg-zinc-100 font-semibold text-xs h-9 shadow-sm">
+                        Study Flashcards
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              ))}
+              {flashcardDecks.length === 0 && (
+                <p className="text-sm text-zinc-500 italic py-4">No flashcard decks available yet.</p>
+              )}
             </div>
           </div>
 

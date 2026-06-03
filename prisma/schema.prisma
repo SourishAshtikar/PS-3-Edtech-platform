@@ -17,6 +17,7 @@ model User {
   role          String    @default("student") // "student" or "faculty"
   xp            Int       @default(0)
   streak        Int       @default(0)
+  maxStreak     Int       @default(0)
   lastActiveDate DateTime?
   googleAccessToken  String?  @db.Text
   googleRefreshToken String?  @db.Text
@@ -72,6 +73,7 @@ model Module {
   subtopics          Subtopic[]
   simulations        Simulation[]
   quizzes            Quiz[]
+  flashcardDecks     FlashcardDeck[]
   studentProgress    StudentProgress[]
 
   @@index([subjectId])
@@ -102,6 +104,7 @@ model Subtopic {
   module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   simulations     Simulation[]
   quizzes         Quiz[]
+  flashcardDecks  FlashcardDeck[]
 
   @@index([moduleId])
 }
@@ -142,14 +145,15 @@ model SimulationProgress {
 }
 
 model Quiz {
-  id          String   @id @default(cuid())
-  moduleId    String
-  subtopicId  String?
-  title       String
-  difficulty  String
-  timeLimit   Int // in minutes
-  xpReward    Int
-  documentUrl String?
+  id                  String   @id @default(cuid())
+  moduleId            String
+  subtopicId          String?
+  title               String
+  difficulty          String
+  timeLimit           Int // in minutes
+  xpReward            Int
+  documentUrl         String?
+  totalQuestionsToAsk Int?
 
   module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   subtopic    Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
@@ -195,11 +199,33 @@ model QuizAttempt {
 
 
 
+model FlashcardDeck {
+  id          String   @id @default(cuid())
+  moduleId    String
+  subtopicId  String?
+  title       String
+  documentUrl String?
+
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  subtopic    Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
+  cards       Flashcard[]
+
+  createdAt   DateTime @default(now())
+
+  @@index([moduleId])
+  @@index([subtopicId])
+}
+
 model Flashcard {
-  id        String   @id @default(cuid())
-  question  String
-  answer    String
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  flashcardDeckId String
+  question        String
+  answer          String
+  createdAt       DateTime @default(now())
+
+  deck            FlashcardDeck @relation(fields: [flashcardDeckId], references: [id], onDelete: Cascade)
+
+  @@index([flashcardDeckId])
 }
 
 model Badge {

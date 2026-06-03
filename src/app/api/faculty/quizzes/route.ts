@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { moduleId, subtopicId, title, difficulty, timeLimit, xpReward, questions, documentUrl } = body;
+    const { moduleId, subtopicId, title, difficulty, timeLimit, xpReward, questions, documentUrl, totalQuestionsToAsk } = body;
 
     if (!moduleId || !title || !difficulty || !timeLimit || !xpReward) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -25,6 +25,7 @@ export async function POST(req: Request) {
         difficulty,
         timeLimit: Number(timeLimit),
         xpReward: Number(xpReward),
+        totalQuestionsToAsk: totalQuestionsToAsk ? Number(totalQuestionsToAsk) : null,
         documentUrl: documentUrl || null,
         questions: {
           create: (questions || []).map((q: any) => ({

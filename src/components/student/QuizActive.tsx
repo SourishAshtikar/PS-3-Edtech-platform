@@ -40,6 +40,15 @@ export function QuizActive({ quiz, onBack }: QuizActiveProps) {
     totalQuestions: number;
     xpEarned: number;
     unlockedBadge: { name: string; description: string } | null;
+    answersData?: {
+      questionId: string;
+      selectedOption: string;
+      isCorrect: boolean;
+      correctAnswer: string;
+      explanation: string | null;
+      questionText: string;
+      options: string[];
+    }[];
   } | null>(null);
 
   // Countdown timer
@@ -137,7 +146,7 @@ export function QuizActive({ quiz, onBack }: QuizActiveProps) {
     const passed = percentage >= 70;
 
     return (
-      <Card className="border-zinc-200 shadow-xl overflow-hidden max-w-2xl mx-auto">
+      <Card className="border-zinc-200 shadow-xl overflow-hidden max-w-4xl mx-auto">
         <div className={`h-2 ${passed ? "bg-green-600" : "bg-primary"}`} />
         <CardHeader className="text-center pb-4 pt-8">
           <div className="mx-auto mb-4 flex items-center justify-center">
@@ -190,6 +199,58 @@ export function QuizActive({ quiz, onBack }: QuizActiveProps) {
               <p className="text-sm">
                 To earn the <strong>{quiz.xpReward} XP</strong> reward and related badges, you need to score at least <strong>70%</strong>. Review the reading materials and try again!
               </p>
+            </div>
+          )}
+
+          {result.answersData && (
+            <div className="mt-8 space-y-6">
+              <h3 className="text-xl font-bold border-b pb-2">Detailed Results</h3>
+              {result.answersData.map((ans, idx) => (
+                <div key={ans.questionId} className={`p-4 rounded-xl border ${ans.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className="flex space-x-3 items-start mb-3">
+                    {ans.isCorrect ? (
+                      <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                    )}
+                    <div>
+                      <p className="font-semibold text-zinc-900">{idx + 1}. {ans.questionText}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="ml-9 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Your Answer</span>
+                        {ans.selectedOption ? (
+                          <div className={`text-sm font-medium p-2 rounded border ${ans.isCorrect ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
+                            {ans.selectedOption}) {ans.options[ans.selectedOption.charCodeAt(0) - 65]}
+                          </div>
+                        ) : (
+                          <div className="text-sm font-medium p-2 rounded border bg-zinc-100 text-zinc-500 border-zinc-300">
+                            Did not answer
+                          </div>
+                        )}
+                      </div>
+                      
+                      {!ans.isCorrect && (
+                        <div>
+                          <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Correct Answer</span>
+                          <div className="text-sm font-medium p-2 rounded border bg-green-100 text-green-800 border-green-300">
+                            {ans.correctAnswer}) {ans.options[ans.correctAnswer.charCodeAt(0) - 65]}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {ans.explanation && (
+                      <div className="mt-3 bg-white/60 p-3 rounded text-sm text-zinc-700 border border-zinc-200">
+                        <span className="font-semibold text-zinc-900">Explanation:</span> {ans.explanation}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

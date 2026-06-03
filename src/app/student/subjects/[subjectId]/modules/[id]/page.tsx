@@ -2,12 +2,13 @@ import Link from "next/link";
 import { getOrCreateUser } from "@/lib/auth";
 import { MarkCompletedButton } from "@/components/student/MarkCompletedButton";
 import { ResourceLinkTracker } from "@/components/student/ResourceLinkTracker";
+import { DownloadModuleButton } from "@/components/student/DownloadModuleButton";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, PlayCircle, FileText, CheckCircle2, Gamepad2, Target, Download, Book, BrainCircuit, CreditCard, Link as LinkIcon, HelpCircle } from "lucide-react";
+import { ChevronLeft, PlayCircle, FileText, CheckCircle2, Gamepad2, Target, Download, Book, BrainCircuit, CreditCard, Link as LinkIcon, HelpCircle, Layers } from "lucide-react";
 import { module1Quizzes } from "@/data/module1QuizData";
 import { module2Quizzes } from "@/data/module2QuizData";
 
@@ -42,11 +43,15 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
   const module = await prisma.module.findUnique({
     where: { id },
     include: {
+      flashcardDecks: {
+        where: { subtopicId: null }
+      },
       subtopics: {
         orderBy: { subtopicNo: 'asc' },
         include: {
           simulations: true,
-          quizzes: true
+          quizzes: true,
+          flashcardDecks: true
         }
       }
     }
@@ -85,8 +90,28 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
           <Badge variant="secondary">{module.co}</Badge>
           <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">{module.hours} Hours</Badge>
         </div>
-        <h1 className="text-3xl font-bold text-zinc-900 mb-4">{module.title}</h1>
-        <p className="text-lg text-zinc-600">{module.description}</p>
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-zinc-900 mb-4">{module.title}</h1>
+            <p className="text-lg text-zinc-600">{module.description}</p>
+          </div>
+          <DownloadModuleButton moduleId={module.id} />
+        </div>
+        
+        {module.flashcardDecks && module.flashcardDecks.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-zinc-100">
+            <h3 className="text-sm font-bold text-zinc-800 mb-3 uppercase tracking-wider">Module Study Materials</h3>
+            <div className="flex flex-wrap gap-3">
+              {module.flashcardDecks.map((deck) => (
+                <Link key={deck.id} href={`/student/subjects/${subjectId}/flashcards/${deck.id}`}>
+                  <Button variant="outline" className="bg-white hover:bg-amber-50 border-amber-200 text-amber-700 text-sm font-bold shadow-sm">
+                    <Layers className="w-4 h-4 mr-2" /> Study: {deck.title}
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <h2 className="text-2xl font-bold text-zinc-800 mb-6">Subtopics</h2>
@@ -95,13 +120,15 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
           const hasNotes = !!subtopic.notesUrl;
           const hasSim = !!subtopic.simulationUrl || (subtopic.simulations && subtopic.simulations.length > 0);
           const hasQuiz = ((subtopic.id in module1Quizzes || subtopic.id in module2Quizzes) || (subtopic.quizzes && subtopic.quizzes.length > 0));
+          const hasFlashcards = subtopic.flashcardDecks && subtopic.flashcardDecks.length > 0;
 
           const isNotesCompleted = !hasNotes || completedResources.includes(`${subtopic.id}-notes`);
           // We check for 'simulation' (from clicking the button) or 'sandbox_completed' (from actually submitting the sandbox)
           const isSimCompleted = !hasSim || completedResources.includes(`${subtopic.id}-simulation`) || completedResources.includes(`${subtopic.id}-sandbox_completed`);
           const isQuizCompleted = !hasQuiz || completedResources.includes(`${subtopic.id}-quiz`);
+          const isFlashcardsCompleted = !hasFlashcards || completedResources.includes(`${subtopic.id}-flashcards`);
 
-          const canComplete = isNotesCompleted && isSimCompleted && isQuizCompleted;
+          const canComplete = isNotesCompleted && isSimCompleted && isQuizCompleted && isFlashcardsCompleted;
 
           return (
           <Card key={subtopic.id} className="border-zinc-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden bg-white">
@@ -164,6 +191,14 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
                         </Button>
                       </Link>
                     </ResourceLinkTracker>
+                  )}
+
+                  {subtopic.flashcardDecks && subtopic.flashcardDecks.length > 0 && (
+                    <Link href={`/student/subjects/${subjectId}/flashcards/${subtopic.flashcardDecks[0].id}`}>
+                      <Button variant="outline" className="bg-white hover:bg-amber-50 border-amber-200 text-amber-700 text-sm font-bold h-11 px-6 shadow-sm">
+                        <Layers className="w-5 h-5 mr-2" /> Study Flashcards
+                      </Button>
+                    </Link>
                   )}
 
                   <MarkCompletedButton 

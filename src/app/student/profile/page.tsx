@@ -96,6 +96,7 @@ export default async function StudentProfilePage() {
             <div>
               <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Daily Streak</p>
               <h3 className="text-2xl font-bold text-zinc-800">{user.streak} Days</h3>
+              <p className="text-[10px] text-zinc-400 mt-0.5">Max Streak: {(user as any).maxStreak || 0} Days</p>
             </div>
           </CardContent>
         </Card>

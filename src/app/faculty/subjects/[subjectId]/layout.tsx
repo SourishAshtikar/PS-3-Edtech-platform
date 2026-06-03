@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { ChevronLeft, LayoutDashboard, FolderOpen, Gamepad2, Brain, Activity } from "lucide-react";
+import { ChevronLeft, LayoutDashboard, FolderOpen, Gamepad2, Brain, Activity, Layers } from "lucide-react";
 
 export default function FacultySubjectLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -29,6 +29,7 @@ export default function FacultySubjectLayout({ children }: { children: React.Rea
     { name: "Resources", href: `/faculty/subjects/${subjectId}/resources`, icon: FolderOpen },
     { name: "Simulations", href: `/faculty/subjects/${subjectId}/simulations`, icon: Gamepad2 },
     { name: "Quizzes", href: `/faculty/subjects/${subjectId}/quizzes`, icon: Brain },
+    { name: "Flashcards", href: `/faculty/subjects/${subjectId}/flashcards`, icon: Layers },
     { name: "Analytics", href: `/faculty/subjects/${subjectId}/analytics`, icon: Activity },
   ];
 

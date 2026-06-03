@@ -34,6 +34,8 @@ export default function ManageQuizzesPage() {
   const [difficulty, setDifficulty] = useState("Easy");
   const [timeLimit, setTimeLimit] = useState("");
   const [xpReward, setXpReward] = useState("100");
+  const [totalQuestionsToAsk, setTotalQuestionsToAsk] = useState("");
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionForm[]>([
     {
       questionText: "",
@@ -47,11 +49,6 @@ export default function ManageQuizzesPage() {
       difficulty: "Easy"
     }
   ]);
-
-  // AI Document upload state
-  const [uploadingDoc, setUploadingDoc] = useState(false);
-  const [uploadedDocName, setUploadedDocName] = useState("");
-  const [docUploadMsg, setDocUploadMsg] = useState("");
 
   const [loading, setLoading] = useState(false);
 
@@ -118,6 +115,97 @@ export default function ManageQuizzesPage() {
     setQuestions(updated);
   };
 
+  const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    try {
+      // 1. Read locally using mammoth
+      const arrayBuffer = await file.arrayBuffer();
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      const text = result.value;
+
+      parseTextAndSetQuestions(text);
+
+      // 2. Upload to Google Drive via API
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/faculty/quizzes/upload-document", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          setDocumentUrl(data.url);
+          toast.success("Document also uploaded to Google Drive!");
+        }
+      } else {
+        console.error("Failed to upload to Google Drive");
+        toast.error("Questions parsed, but failed to upload to Google Drive.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An error occurred during file processing.");
+    } finally {
+      setLoading(false);
+      if (e.target) e.target.value = ""; // reset file input
+    }
+  };
+
+  const parseTextAndSetQuestions = (text: string) => {
+    if (!text.trim()) return;
+
+    const newQuestions: QuestionForm[] = [];
+    const blocks = text.split(/\n(?=\d+\.\s)/).filter(b => b.trim());
+
+    blocks.forEach(block => {
+      // Find question text: anything up to the first A) or A. 
+      const qMatch = block.match(/^(?:\d+\.\s+)?([\s\S]*?)\n(?=A[\)\.])/i);
+      if (!qMatch) return;
+      const questionText = qMatch[1].trim();
+
+      const optionAMatch = block.match(/A[\)\.]\s+([^\n]*)/i);
+      const optionBMatch = block.match(/B[\)\.]\s+([^\n]*)/i);
+      const optionCMatch = block.match(/C[\)\.]\s+([^\n]*)/i);
+      const optionDMatch = block.match(/D[\)\.]\s+([^\n]*)/i);
+
+      let answer = "A";
+      let explanation = "";
+
+      const answerMatch = block.match(/Answer:\s*([A-D])[\.\s]*(.*)/is);
+      if (answerMatch) {
+        answer = answerMatch[1].toUpperCase();
+        explanation = answerMatch[2].trim();
+      }
+
+      if (questionText) {
+        newQuestions.push({
+          questionText,
+          optionA: optionAMatch ? optionAMatch[1].trim() : "",
+          optionB: optionBMatch ? optionBMatch[1].trim() : "",
+          optionC: optionCMatch ? optionCMatch[1].trim() : "",
+          optionD: optionDMatch ? optionDMatch[1].trim() : "",
+          correctAnswer: answer,
+          marks: "1",
+          explanation: explanation,
+          difficulty: difficulty
+        });
+      }
+    });
+
+    if (newQuestions.length > 0) {
+      setQuestions([...questions.filter(q => q.questionText.trim() !== ""), ...newQuestions]);
+      toast.success(`Successfully parsed ${newQuestions.length} questions from DOCX!`);
+    } else {
+      toast.error("Failed to parse questions. Please check the format in the DOCX file.");
+    }
+  };
+
   const handleEdit = (quiz: any) => {
     setEditingQuizId(quiz.id);
     setSelectedModuleId(quiz.moduleId);
@@ -126,6 +214,8 @@ export default function ManageQuizzesPage() {
     setDifficulty(quiz.difficulty);
     setTimeLimit(quiz.timeLimit.toString());
     setXpReward(quiz.xpReward.toString());
+    setTotalQuestionsToAsk(quiz.totalQuestionsToAsk ? quiz.totalQuestionsToAsk.toString() : "");
+    setDocumentUrl(quiz.documentUrl || null);
 
     if (quiz.questions && quiz.questions.length > 0) {
       setQuestions(quiz.questions.map((q: any) => ({
@@ -169,6 +259,8 @@ export default function ManageQuizzesPage() {
     setTitle("");
     setTimeLimit("");
     setXpReward("100");
+    setTotalQuestionsToAsk("");
+    setDocumentUrl(null);
     setSelectedSubtopicId("");
     setQuestions([{
       questionText: "", optionA: "", optionB: "", optionC: "", optionD: "",
@@ -207,6 +299,8 @@ export default function ManageQuizzesPage() {
           difficulty,
           timeLimit,
           xpReward,
+          documentUrl,
+          totalQuestionsToAsk: totalQuestionsToAsk ? parseInt(totalQuestionsToAsk) : null,
           questions: validQuestions
         })
       });
@@ -226,20 +320,7 @@ export default function ManageQuizzesPage() {
     }
   };
 
-  // Mock document upload for future quiz generation
-  const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    setUploadingDoc(true);
-    setDocUploadMsg("");
-    setUploadedDocName(file.name);
-
-    setTimeout(() => {
-      setUploadingDoc(false);
-      setDocUploadMsg(`File "${file.name}" uploaded successfully! (Quiz will be generated in upcoming versions.)`);
-    }, 2000);
-  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -352,6 +433,16 @@ export default function ManageQuizzesPage() {
                       className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-zinc-900 focus:outline-none focus:border-primary"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-bold text-zinc-700 mb-1">Total Questions to Ask</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 10 (Optional)"
+                      value={totalQuestionsToAsk}
+                      onChange={(e) => setTotalQuestionsToAsk(e.target.value)}
+                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-zinc-900 focus:outline-none focus:border-primary"
+                    />
+                  </div>
                 </div>
 
                 <div className="border-t border-zinc-200 pt-6">
@@ -366,6 +457,32 @@ export default function ManageQuizzesPage() {
                     >
                       <Plus className="w-4 h-4" /> <span>Add Question</span>
                     </Button>
+                  </div>
+
+                  <div className="mb-6 p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-3 relative group">
+                    <h4 className="font-bold text-sm text-zinc-800 flex items-center">
+                      <FileUp className="w-4 h-4 mr-2 text-primary" /> Import Questions from DOCX
+                    </h4>
+                    {documentUrl && (
+                      <p className="text-xs text-green-600 font-semibold mb-2">
+                        Document uploaded and attached successfully.
+                      </p>
+                    )}
+                    <p className="text-xs text-zinc-500">Upload a Word Document to extract questions. Format: <br/>1. Question Text<br/>A) Option 1<br/>B) Option 2<br/>C) Option 3<br/>D) Option 4<br/>Answer: A. Explanation text...</p>
+                    
+                    <div className="border-2 border-dashed border-zinc-300 rounded-lg p-4 flex flex-col items-center justify-center bg-white hover:bg-zinc-50 transition-colors relative cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".docx"
+                        onChange={handleDocxUpload}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        disabled={loading}
+                      />
+                      <FileUp className="w-8 h-8 text-zinc-400 group-hover:text-primary transition-colors mb-2" />
+                      <span className="font-semibold text-zinc-700 text-xs">
+                        Click or Drag .docx File here to Upload
+                      </span>
+                    </div>
                   </div>
 
                   <div className="space-y-6">
@@ -520,39 +637,7 @@ export default function ManageQuizzesPage() {
             </CardContent>
           </Card>
 
-          {/* AI Generator Document Upload UI */}
-          <Card className="border-zinc-200 shadow-md">
-            <CardHeader className="bg-zinc-50 border-b border-zinc-100">
-              <CardTitle className="text-xl text-zinc-900 flex items-center">
-                <Sparkles className="w-5 h-5 text-amber-500 mr-2 animate-bounce" /> Document-Based Quiz Generator
-              </CardTitle>
-              <CardDescription>
-                Upload reference material (PDF/Word) to automatically compile quiz questions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="border-2 border-dashed border-zinc-300 rounded-xl p-8 flex flex-col items-center justify-center bg-zinc-50 hover:bg-zinc-100/50 transition-colors relative cursor-pointer group">
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt"
-                  onChange={handleDocUpload}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  disabled={uploadingDoc}
-                />
-                <FileUp className="w-12 h-12 text-zinc-400 group-hover:text-primary transition-colors mb-3" />
-                <span className="font-semibold text-zinc-700 text-sm">
-                  {uploadingDoc ? "Uploading File..." : "Click or Drag File here to Upload"}
-                </span>
-                <span className="text-xs text-zinc-400 mt-1">Supports PDF, Word, or TXT (Max 10MB)</span>
-              </div>
 
-              {docUploadMsg && (
-                <div className="mt-4 p-3 bg-blue-50 text-blue-800 rounded-lg text-xs font-semibold border border-blue-100">
-                  {docUploadMsg}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
         {/* Existing Quizzes List */}
