@@ -38,6 +38,14 @@ function getEmbedUrl(url: string | null | undefined): string | null {
   return url;
 }
 
+function getGoogleDriveEmbedUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.includes("drive.google.com/file/d/")) {
+    return url.replace(/\/view.*$/, "/preview");
+  }
+  return url;
+}
+
 export default async function ModuleDetailPage({ params }: { params: Promise<{ id: string, subjectId: string }> }) {
   const { id, subjectId } = await params;
   const module = await prisma.module.findUnique({
@@ -167,13 +175,11 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ i
                       <Headphones className="w-4 h-4 mr-2 text-purple-600" /> Audio Lesson
                     </p>
                     <ResourceLinkTracker subtopicId={subtopic.id} moduleId={id} resourceType="audio">
-                      <audio 
-                        controls 
-                        className="w-full h-12 rounded-lg bg-zinc-50 border border-zinc-200 shadow-sm"
-                        src={subtopic.audioDownloadUrl || subtopic.audioUrl}
-                      >
-                        Your browser does not support the audio element.
-                      </audio>
+                      <iframe 
+                        className="w-full h-16 rounded-lg bg-zinc-50 border border-zinc-200 shadow-sm"
+                        src={getGoogleDriveEmbedUrl(subtopic.audioUrl) || ""}
+                        allow="autoplay"
+                      ></iframe>
                     </ResourceLinkTracker>
                     <div className="mt-2 text-right">
                        <a href={subtopic.audioUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-purple-600 hover:underline">
