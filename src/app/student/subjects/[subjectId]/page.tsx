@@ -14,6 +14,59 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SubjectResourceCard } from "@/components/cards/SubjectResourceCard";
 
+import { unstable_cache } from "next/cache";
+
+const getCachedSubjectDashboardData = unstable_cache(
+  async (subjectId: string) => {
+    const [
+      modules,
+      recommendedSimulations,
+      quizzes,
+      enrollmentsTop,
+      subjectResources,
+      flashcardDecks
+    ] = await Promise.all([
+      prisma.module.findMany({
+        where: { subjectId },
+        include: { subtopics: true },
+        orderBy: { moduleNo: 'asc' }
+      }),
+      prisma.simulation.findMany({
+        where: { module: { subjectId } },
+        take: 2,
+        orderBy: { xpReward: 'desc' }
+      }),
+      prisma.quiz.findMany({
+        where: { module: { subjectId } },
+        include: {
+          module: true,
+          questions: true,
+        },
+        orderBy: { title: 'asc' }
+      }),
+      prisma.subjectEnrollment.findMany({
+        where: { subjectId },
+        include: { user: true },
+        orderBy: { xp: 'desc' },
+        take: 3
+      }),
+      prisma.resource.findMany({
+        where: { subjectId },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.flashcardDeck.findMany({
+        where: { module: { subjectId } },
+        include: { module: true, cards: true },
+        orderBy: { title: 'asc' }
+      })
+    ]);
+
+    return { modules, recommendedSimulations, quizzes, enrollmentsTop, subjectResources, flashcardDecks };
+  },
+  ['student-subject-dashboard'],
+  { revalidate: 60, tags: ['subject-dashboard'] }
+);
+
 export default async function StudentDashboard({ params }: { params: Promise<{ subjectId: string }> }) {
   const user = await getOrCreateUser();
   if (!user) redirect("/sign-in");
@@ -36,48 +89,32 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
     });
   }
 
-  // 2. Execute all independent queries concurrently
-  const [
+  // 2. Execute cached global queries
+  const {
     modules,
-    userProgress,
     recommendedSimulations,
     quizzes,
     enrollmentsTop,
-    higherRankCount,
     subjectResources,
-    userBadges,
     flashcardDecks
+  } = await getCachedSubjectDashboardData(subjectId);
+
+  // 3. Execute user-specific queries concurrently
+  const [
+    userProgress,
+    quizAttempts,
+    higherRankCount,
+    userBadges
   ] = await Promise.all([
-    prisma.module.findMany({
-      where: { subjectId },
-      include: { subtopics: true },
-      orderBy: { moduleNo: 'asc' }
-    }),
     prisma.studentProgress.findMany({
       where: { userId: user.id }
     }),
-    prisma.simulation.findMany({
-      where: { module: { subjectId } },
-      take: 2,
-      orderBy: { xpReward: 'desc' }
-    }),
-    prisma.quiz.findMany({
-      where: { module: { subjectId } },
-      include: {
-        module: true,
-        questions: true,
-        attempts: {
-          where: { userId: user.id },
-          orderBy: { createdAt: 'desc' }
-        }
+    prisma.quizAttempt.findMany({
+      where: { 
+        userId: user.id,
+        quiz: { moduleId: { in: modules.map(m => m.id) } }
       },
-      orderBy: { title: 'asc' }
-    }),
-    prisma.subjectEnrollment.findMany({
-      where: { subjectId },
-      include: { user: true },
-      orderBy: { xp: 'desc' },
-      take: 3
+      orderBy: { createdAt: 'desc' }
     }),
     prisma.subjectEnrollment.count({
       where: { 
@@ -85,20 +122,17 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
         xp: { gt: enrollment.xp } 
       }
     }),
-    prisma.resource.findMany({
-      where: { subjectId },
-      orderBy: { createdAt: 'desc' }
-    }),
     prisma.userBadge.findMany({
       where: { userId: user.id },
       include: { badge: true }
-    }),
-    prisma.flashcardDeck.findMany({
-      where: { module: { subjectId } },
-      include: { module: true, cards: true },
-      orderBy: { title: 'asc' }
     })
   ]);
+
+  // Map quiz attempts to their respective quizzes
+  const quizzesWithAttempts = quizzes.map(quiz => ({
+    ...quiz,
+    attempts: quizAttempts.filter(a => a.quizId === quiz.id)
+  }));
 
   const topStudents = enrollmentsTop.map(e => ({ ...e.user, subjectXp: e.xp }));
   const classRank = higherRankCount + 1;
@@ -318,7 +352,7 @@ export default async function StudentDashboard({ params }: { params: Promise<{ s
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {quizzes.map((quiz) => {
+              {quizzesWithAttempts.map((quiz) => {
                 const attempt = quiz.attempts[0];
                 const isCompleted = attempt?.completed;
 
