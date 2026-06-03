@@ -11,7 +11,33 @@ import { FacultyListCard } from "@/components/faculty/FacultyListModal";
 import { getOrCreateUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
+import { unstable_cache } from "next/cache";
+
 export const dynamic = "force-dynamic";
+
+const getCachedDashboardStats = unstable_cache(
+  async () => {
+    const subjects = await prisma.subject.findMany({
+      include: {
+        _count: {
+          select: { modules: true, enrollments: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    const totalStudents = await prisma.user.count({ where: { role: 'student' } });
+    
+    const facultyMembers = await prisma.user.findMany({ 
+      where: { role: 'faculty' },
+      select: { id: true, name: true, email: true }
+    });
+
+    return { subjects, totalStudents, facultyMembers, totalSubjects: subjects.length, totalFaculty: facultyMembers.length };
+  },
+  ['faculty-dashboard-stats'],
+  { revalidate: 60, tags: ['dashboard'] }
+);
 
 export default async function FacultyDashboardPage() {
   const user = await getOrCreateUser();
@@ -20,22 +46,7 @@ export default async function FacultyDashboardPage() {
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
   const isDriveConnected = !!dbUser?.googleRefreshToken;
 
-  const subjects = await prisma.subject.findMany({
-    include: {
-      _count: {
-        select: { modules: true, enrollments: true },
-      },
-    },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  const totalStudents = await prisma.user.count({ where: { role: 'student' } });
-  const totalSubjects = subjects.length;
-  const facultyMembers = await prisma.user.findMany({ 
-    where: { role: 'faculty' },
-    select: { id: true, name: true, email: true }
-  });
-  const totalFaculty = facultyMembers.length;
+  const { subjects, totalStudents, facultyMembers, totalSubjects, totalFaculty } = await getCachedDashboardStats();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">

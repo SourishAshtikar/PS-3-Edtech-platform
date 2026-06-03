@@ -38,6 +38,8 @@ function getEmbedUrl(url: string | null | undefined): string | null {
   return url;
 }
 
+import { unstable_cache } from 'next/cache';
+
 function getGoogleDriveEmbedUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   if (url.includes("drive.google.com/file/d/")) {
@@ -46,24 +48,32 @@ function getGoogleDriveEmbedUrl(url: string | null | undefined): string | null {
   return url;
 }
 
-export default async function ModuleDetailPage({ params }: { params: Promise<{ id: string, subjectId: string }> }) {
-  const { id, subjectId } = await params;
-  const module = await prisma.module.findUnique({
-    where: { id },
-    include: {
-      flashcardDecks: {
-        where: { subtopicId: null }
-      },
-      subtopics: {
-        orderBy: { subtopicNo: 'asc' },
-        include: {
-          simulations: true,
-          quizzes: true,
-          flashcardDecks: true
+const getCachedModule = unstable_cache(
+  async (id: string) => {
+    return await prisma.module.findUnique({
+      where: { id },
+      include: {
+        flashcardDecks: {
+          where: { subtopicId: null }
+        },
+        subtopics: {
+          orderBy: { subtopicNo: 'asc' },
+          include: {
+            simulations: true,
+            quizzes: true,
+            flashcardDecks: true
+          }
         }
       }
-    }
-  });
+    });
+  },
+  ['student-module-detail'],
+  { revalidate: 60, tags: ['modules'] }
+);
+
+export default async function ModuleDetailPage({ params }: { params: Promise<{ id: string, subjectId: string }> }) {
+  const { id, subjectId } = await params;
+  const module = await getCachedModule(id);
 
   if (!module) {
     notFound();
