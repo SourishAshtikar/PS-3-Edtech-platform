@@ -18,12 +18,13 @@ interface FlashcardViewerProps {
   moduleId: string;
   subtopicId: string | null;
   subjectId: string;
+  isInitiallyCompleted?: boolean;
 }
 
-export function FlashcardViewer({ cards, deckId, moduleId, subtopicId, subjectId }: FlashcardViewerProps) {
+export function FlashcardViewer({ cards, deckId, moduleId, subtopicId, subjectId, isInitiallyCompleted = false }: FlashcardViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [completed, setCompleted] = useState(false);
+  const [completed, setCompleted] = useState(isInitiallyCompleted);
   const [completing, setCompleting] = useState(false);
 
   if (!cards || cards.length === 0) {

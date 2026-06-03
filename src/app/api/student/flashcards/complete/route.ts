@@ -14,6 +14,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const resourceStr = subtopicId ? `${subtopicId}-flashcards` : `${deckId}-flashcards`;
+
+    let progress = await prisma.studentProgress.findUnique({
+      where: { userId_moduleId: { userId: user.id, moduleId } }
+    });
+
+    if (progress && progress.completedResources.includes(resourceStr)) {
+      return NextResponse.json({ error: "XP already claimed for this deck" }, { status: 400 });
+    }
+
     // 1. Get user enrollment for this subject to award XP
     const enrollment = await prisma.subjectEnrollment.findUnique({
       where: { userId_subjectId: { userId: user.id, subjectId } }
@@ -29,33 +39,24 @@ export async function POST(req: Request) {
       data: { xp: { increment: 25 } }
     });
 
-    // 3. Mark progress for subtopic (if subtopicId is provided)
-    if (subtopicId) {
-      let progress = await prisma.studentProgress.findUnique({
-        where: { userId_moduleId: { userId: user.id, moduleId } }
-      });
-
-      if (!progress) {
-        progress = await prisma.studentProgress.create({
-          data: {
-            userId: user.id,
-            moduleId,
-            completedResources: [`${subtopicId}-flashcards`]
-          }
-        });
-      } else {
-        const resourceStr = `${subtopicId}-flashcards`;
-        if (!progress.completedResources.includes(resourceStr)) {
-          await prisma.studentProgress.update({
-            where: { id: progress.id },
-            data: {
-              completedResources: {
-                push: resourceStr
-              }
-            }
-          });
+    // 3. Mark progress
+    if (!progress) {
+      progress = await prisma.studentProgress.create({
+        data: {
+          userId: user.id,
+          moduleId,
+          completedResources: [resourceStr]
         }
-      }
+      });
+    } else {
+      await prisma.studentProgress.update({
+        where: { id: progress.id },
+        data: {
+          completedResources: {
+            push: resourceStr
+          }
+        }
+      });
     }
 
     return NextResponse.json({ success: true, xpEarned: 25 });

@@ -25,6 +25,18 @@ export default async function FlashcardDeckPage({ params }: { params: Promise<{ 
     redirect(`/student/subjects/${subjectId}/flashcards`);
   }
 
+  const progress = await prisma.studentProgress.findUnique({
+    where: {
+      userId_moduleId: {
+        userId: user.id,
+        moduleId: deck.moduleId
+      }
+    }
+  });
+
+  const resourceStr = deck.subtopicId ? `${deck.subtopicId}-flashcards` : `${deck.id}-flashcards`;
+  const isInitiallyCompleted = progress?.completedResources.includes(resourceStr) || false;
+
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col">
       {/* Header */}
@@ -55,6 +67,7 @@ export default async function FlashcardDeckPage({ params }: { params: Promise<{ 
           moduleId={deck.moduleId}
           subtopicId={deck.subtopicId}
           subjectId={subjectId}
+          isInitiallyCompleted={isInitiallyCompleted}
         />
       </div>
     </div>
