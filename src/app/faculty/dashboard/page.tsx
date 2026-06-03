@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
-import { Users, BookOpen, Target, Gamepad2, PlusCircle, Activity, HardDrive, GraduationCap, Trophy } from "lucide-react";
+import { Users, BookOpen, Target, Gamepad2, PlusCircle, Activity, HardDrive, GraduationCap, Trophy, Sparkles } from "lucide-react";
 import { WhitelistFacultyForm } from "@/components/faculty/WhitelistFacultyForm";
 import { CreateSubjectForm } from "@/components/faculty/CreateSubjectForm";
 import { ConnectDriveButton } from "@/components/faculty/ConnectDriveButton";
@@ -143,6 +143,24 @@ export default async function FacultyDashboardPage() {
             </CardHeader>
             <CardContent>
               <WhitelistFacultyForm />
+            </CardContent>
+          </Card>
+
+          {/* Live Link Editor */}
+          <Card className="border-indigo-200 bg-gradient-to-br from-white to-indigo-50/20 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-indigo-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-600" />
+                <span>Live Link Editor</span>
+              </CardTitle>
+              <CardDescription>Instantly change subtopic videos and notes URLs.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/quick-update">
+                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-10 shadow-sm transition-colors">
+                  Open Editor Dashboard
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
