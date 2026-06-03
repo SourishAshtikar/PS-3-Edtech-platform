@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
+import { useParams } from "next/navigation";
+
 interface Subtopic {
   id: string;
   subtopicNo: string;
@@ -33,6 +35,9 @@ interface Module {
 }
 
 export default function QuickUpdatePage() {
+  const params = useParams();
+  const subjectId = params.subjectId as string;
+
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,11 +48,11 @@ export default function QuickUpdatePage() {
 
   useEffect(() => {
     fetchModules();
-  }, []);
+  }, [subjectId]);
 
   const fetchModules = async () => {
     try {
-      const res = await fetch("/api/quick-update");
+      const res = await fetch(`/api/quick-update?subjectId=${subjectId}`);
       if (res.ok) {
         const data = await res.json();
         setModules(data);
@@ -176,7 +181,7 @@ export default function QuickUpdatePage() {
           
           <div className="flex items-center gap-3">
             <a 
-              href="/student/subjects" 
+              href={`/student/subjects/${subjectId}/modules`} 
               target="_blank" 
               className="px-5 py-2.5 bg-white text-indigo-700 hover:bg-slate-100 rounded-xl text-sm font-bold shadow-md transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
             >

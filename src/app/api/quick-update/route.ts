@@ -28,9 +28,13 @@ function formatVideoUrl(url: string | null | undefined): string | null {
   return trimmed;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const subjectId = url.searchParams.get("subjectId");
+
     const modules = await prisma.module.findMany({
+      where: subjectId ? { subjectId } : undefined,
       include: {
         subtopics: {
           orderBy: { subtopicNo: "asc" }
